@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 function App() {
   const [resumeText, setResumeText] = useState("");
   const [targetRole, setTargetRole] = useState("fresher");
@@ -78,8 +81,8 @@ function App() {
 
       const endpoint =
         authMode === "signup"
-          ? "http://localhost:5000/api/auth/signup"
-          : "http://localhost:5000/api/auth/login";
+          ? `${API_BASE_URL}/api/auth/signup`
+          : `${API_BASE_URL}/api/auth/login`;
 
       const payload =
         authMode === "signup"
@@ -140,7 +143,7 @@ function App() {
     try {
       setHistoryLoading(true);
 
-      const response = await fetch("http://localhost:5000/api/analysis-history", {
+      const response = await fetch(`${API_BASE_URL}/api/analysis-history`, {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
@@ -209,7 +212,7 @@ function App() {
       }
 
       const orderResponse = await fetch(
-        "http://localhost:5000/api/payment/create-order",
+        `${API_BASE_URL}/api/payment/create-order`,
         {
           method: "POST",
           headers: {
@@ -221,7 +224,11 @@ function App() {
       const orderData = await orderResponse.json();
 
       if (!orderData.success) {
-        alert(orderData.message || "Failed to create payment order.");
+        alert(
+          `${orderData.message || "Failed to create payment order."}${
+            orderData.error ? "\n\nBackend error: " + orderData.error : ""
+          }`
+        );
         return;
       }
 
@@ -245,7 +252,7 @@ function App() {
         handler: async function (paymentResponse) {
           try {
             const verifyResponse = await fetch(
-              "http://localhost:5000/api/payment/verify",
+              `${API_BASE_URL}/api/payment/verify`,
               {
                 method: "POST",
                 headers: {
@@ -312,7 +319,7 @@ function App() {
       const formData = new FormData();
       formData.append("resume", selectedFile);
 
-      const response = await fetch("http://localhost:5000/api/upload-resume", {
+      const response = await fetch(`${API_BASE_URL}/api/upload-resume`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -351,7 +358,7 @@ function App() {
       setLoading(true);
       setResult(null);
 
-      const response = await fetch("http://localhost:5000/api/analyze-resume", {
+      const response = await fetch(`${API_BASE_URL}/api/analyze-resume`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
