@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
 import DashboardAnalytics from "./components/DashboardAnalytics";
-import AdminDashboard from "./components/AdminDashboard";
-import LandingPagePolish from "./components/LandingPagePolish";
-import LiveAIMockInterview from "./components/LiveAIMockInterview";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import LiveAIMockInterview from "./components/LiveAIMockInterview";
 
 function App() {
   const [resumeText, setResumeText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [targetRole, setTargetRole] = useState("fresher");
+  const [customRole, setCustomRole] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
@@ -46,18 +45,45 @@ function App() {
   });
 
   const roleLabels = {
-    fresher: "Fresher General",
-    "it-support": "IT Support",
-    "project-coordinator": "Project Coordinator",
-    "customer-support": "Customer Support",
-    "data-analyst": "Data Analyst",
-  };
+  fresher: "Fresher General",
+  "it-support": "IT Support",
+  "desktop-support-engineer": "Desktop Support Engineer",
+  "service-desk-analyst": "Service Desk Analyst",
+  "technical-support-executive": "Technical Support Executive",
+  "it-helpdesk-engineer": "IT Helpdesk Engineer",
+  "project-coordinator": "Project Coordinator",
+  "project-manager": "Project Manager",
+  "project-delivery-manager": "Project Delivery Manager",
+  "pmo-executive": "PMO Executive",
+  "operations-executive": "Operations Executive",
+  "operations-manager": "Operations Manager",
+  "mis-executive": "MIS Executive",
+  "business-analyst": "Business Analyst",
+  "customer-support": "Customer Support",
+  "customer-success-executive": "Customer Success Executive",
+  "customer-service-support-manager": "Customer Service Support Manager",
+  "data-analyst": "Data Analyst",
+  "hr-executive": "HR Executive",
+  "admin-executive": "Admin Executive",
+  "finance-executive": "Finance Executive",
+  "digital-marketing-executive": "Digital Marketing Executive",
+  "software-developer": "Software Developer",
+  "frontend-developer": "Frontend Developer",
+  "backend-developer": "Backend Developer",
+  custom: "Custom Job Role",
+};
 
   const isPremium = user?.plan === "premium";
 
-  const isAdminUser =
-    user?.isAdmin === true ||
-    String(user?.email || "").toLowerCase().trim() === "bragadishv@gmail.com";
+  const effectiveTargetRole =
+    targetRole === "custom"
+      ? customRole.trim() || "custom"
+      : targetRole;
+
+  const displayTargetRole =
+    targetRole === "custom"
+      ? customRole.trim() || "Custom Job Role"
+      : roleLabels[targetRole] || targetRole;
 
   useEffect(() => {
     if (token) {
@@ -451,11 +477,6 @@ function App() {
     if (element) element.scrollIntoView({ behavior: "smooth" });
   };
 
-  const scrollToPrimaryAction = () => {
-    const element = document.getElementById(user ? "resume-analyzer" : "auth-section");
-    if (element) element.scrollIntoView({ behavior: "smooth" });
-  };
-
   const maskSensitiveText = (text) => {
     if (!text) {
       return "";
@@ -575,7 +596,7 @@ function App() {
     addSmallText(`User: ${user?.name || "HireNexa User"}`);
     addSmallText(`Email: ${user?.email || "Not available"}`);
     addSmallText(`Plan: ${user?.plan || "free"}`);
-    addSmallText(`Target Role: ${roleLabels[targetRole] || "Fresher General"}`);
+    addSmallText(`Target Role: ${displayTargetRole}`);
     addSmallText(`ATS Score: ${result.atsScore}%`);
     addSmallText(`Generated Date: ${new Date().toLocaleDateString()}`);
 
@@ -944,15 +965,9 @@ function App() {
         </div>
       </section>
 
-      <LandingPagePolish
-        onStart={scrollToPrimaryAction}
-        isPremium={isPremium}
-        user={user}
-      />
-
       <main style={styles.main}>
         {!user && (
-          <section id="auth-section" style={styles.authCard}>
+          <section style={styles.authCard}>
             <div style={styles.sectionHeader}>
               <p style={styles.sectionEyebrow}>Secure Access</p>
               <h2 style={styles.sectionTitle}>
@@ -1064,10 +1079,6 @@ function App() {
               )}
             </section>
 
-            {isAdminUser && (
-              <AdminDashboard token={token} apiBaseUrl={API_BASE_URL} />
-            )}
-
             <DashboardAnalytics
               history={history}
               user={user}
@@ -1091,14 +1102,34 @@ function App() {
               <select
                 style={styles.select}
                 value={targetRole}
-                onChange={(e) => setTargetRole(e.target.value)}
+                onChange={(e) => {
+                  setTargetRole(e.target.value);
+                  if (e.target.value !== "custom") {
+                    setCustomRole("");
+                  }
+                }}
               >
-                <option value="fresher">Fresher General</option>
-                <option value="it-support">IT Support</option>
-                <option value="project-coordinator">Project Coordinator</option>
-                <option value="customer-support">Customer Support</option>
-                <option value="data-analyst">Data Analyst</option>
+                {Object.entries(roleLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </select>
+
+              {targetRole === "custom" && (
+                <div style={{ marginTop: "14px" }}>
+                  <label style={styles.label}>Enter Custom Job Role</label>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    placeholder="Example: Cyber Security Analyst, Product Manager, Sales Executive"
+                    value={customRole}
+                    onChange={(e) => setCustomRole(e.target.value)}
+                  />
+                </div>
+              )}
+
+              
 
               <label style={styles.label}>Paste Job Description Optional</label>
               <textarea
@@ -1218,7 +1249,7 @@ function App() {
               <div style={styles.metricCard}>
                 <p style={styles.metricLabel}>Target Role</p>
                 <h3 style={styles.metricValue}>
-                  {roleLabels[targetRole] || "Fresher General"}
+                  {displayTargetRole}
                 </h3>
               </div>
 
@@ -1703,14 +1734,16 @@ function App() {
               </div>
             </div>
 
+            
             <LiveAIMockInterview
-  token={token}
-  apiBaseUrl={API_BASE_URL}
-  resumeText={resumeText}
-  targetRole={targetRole}
-  jobDescription={jobDescription}
-  result={result}
-/>
+              token={token}
+              apiBaseUrl={API_BASE_URL}
+              resumeText={resumeText}
+              targetRole={effectiveTargetRole}
+              jobDescription={jobDescription}
+              result={result}
+            />
+
             {result.mockInterview && (
               <div style={styles.interviewCoachSection}>
                 <div style={styles.interviewCoachHeader}>
@@ -1720,7 +1753,7 @@ function App() {
                     </p>
                     <h3 style={styles.interviewCoachTitle}>
                       Practice Plan for{" "}
-                      {roleLabels[targetRole] || "Fresher General"}
+                      {displayTargetRole}
                     </h3>
                     <p style={styles.interviewCoachText}>
                       These questions and answer strategies help you prepare like
