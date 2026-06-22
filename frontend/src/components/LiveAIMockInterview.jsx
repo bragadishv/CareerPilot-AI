@@ -11,6 +11,7 @@ function LiveAIMockInterview({
   const [loading, setLoading] = useState(false);
   const [aiInterview, setAiInterview] = useState(null);
   const [error, setError] = useState("");
+  const [selectedMockAnswers, setSelectedMockAnswers] = useState({});
 
   const generateLiveMockInterview = async () => {
     if (!token) {
@@ -27,6 +28,7 @@ function LiveAIMockInterview({
       setLoading(true);
       setError("");
       setAiInterview(null);
+      setSelectedMockAnswers({});
 
       const response = await fetch(`${apiBaseUrl}/api/gemini/mock-interview`, {
         method: "POST",
@@ -56,6 +58,21 @@ function LiveAIMockInterview({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMockAnswerSelect = (questionIndex, selectedOption) => {
+    setSelectedMockAnswers((previousAnswers) => ({
+      ...previousAnswers,
+      [questionIndex]: selectedOption,
+    }));
+  };
+
+  const normalizeText = (text) => {
+    return String(text || "").trim().toLowerCase();
+  };
+
+  const isCorrectAnswer = (selectedOption, correctAnswer) => {
+    return normalizeText(selectedOption) === normalizeText(correctAnswer);
   };
 
   const renderQuestionCards = (title, items) => {
@@ -93,28 +110,95 @@ function LiveAIMockInterview({
     return (
       <div style={styles.panel}>
         <h3 style={styles.panelTitle}>Live AI Mock Test</h3>
+        <p style={styles.testInstruction}>
+          Select an answer to reveal the correct answer and explanation.
+        </p>
 
         <div style={styles.questionList}>
-          {aiInterview.mockTest.map((item, index) => (
-            <div key={`mock-test-${index}`} style={styles.questionCard}>
-              <p style={styles.questionNumber}>Mock Test {index + 1}</p>
-              <h4 style={styles.questionText}>{item.question}</h4>
+          {aiInterview.mockTest.map((item, index) => {
+            const selectedAnswer = selectedMockAnswers[index];
+            const hasAnswered = Boolean(selectedAnswer);
+            const userIsCorrect = isCorrectAnswer(
+              selectedAnswer,
+              item.correctAnswer
+            );
 
-              <div style={styles.optionGrid}>
-                {(item.options || []).map((option, optionIndex) => (
-                  <div key={`${option}-${optionIndex}`} style={styles.optionBox}>
-                    {option}
+            return (
+              <div key={`mock-test-${index}`} style={styles.questionCard}>
+                <p style={styles.questionNumber}>Mock Test {index + 1}</p>
+                <h4 style={styles.questionText}>{item.question}</h4>
+
+                <div style={styles.optionGrid}>
+                  {(item.options || []).map((option, optionIndex) => {
+                    const isSelected =
+                      normalizeText(selectedAnswer) === normalizeText(option);
+                    const isCorrect =
+                      normalizeText(item.correctAnswer) === normalizeText(option);
+
+                    let optionStyle = styles.optionButton;
+
+                    if (hasAnswered && isCorrect) {
+                      optionStyle = {
+                        ...styles.optionButton,
+                        ...styles.correctOption,
+                      };
+                    }
+
+                    if (hasAnswered && isSelected && !isCorrect) {
+                      optionStyle = {
+                        ...styles.optionButton,
+                        ...styles.wrongOption,
+                      };
+                    }
+
+                    if (!hasAnswered && isSelected) {
+                      optionStyle = {
+                        ...styles.optionButton,
+                        ...styles.selectedOption,
+                      };
+                    }
+
+                    return (
+                      <button
+                        key={`${option}-${optionIndex}`}
+                        style={optionStyle}
+                        onClick={() => handleMockAnswerSelect(index, option)}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {!hasAnswered && (
+                  <p style={styles.hiddenAnswerNote}>
+                    Choose one option to check your answer.
+                  </p>
+                )}
+
+                {hasAnswered && (
+                  <div style={styles.answerRevealBox}>
+                    <p
+                      style={{
+                        ...styles.resultStatus,
+                        color: userIsCorrect ? "#bbf7d0" : "#fecaca",
+                      }}
+                    >
+                      {userIsCorrect
+                        ? "Correct answer ✅"
+                        : "Your answer is incorrect ❌"}
+                    </p>
+
+                    <p style={styles.answerLabel}>Correct Answer</p>
+                    <p style={styles.correctAnswer}>{item.correctAnswer}</p>
+
+                    <p style={styles.answerLabel}>Explanation</p>
+                    <p style={styles.answerText}>{item.explanation}</p>
                   </div>
-                ))}
+                )}
               </div>
-
-              <p style={styles.answerLabel}>Correct Answer</p>
-              <p style={styles.correctAnswer}>{item.correctAnswer}</p>
-
-              <p style={styles.answerLabel}>Explanation</p>
-              <p style={styles.answerText}>{item.explanation}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -148,10 +232,12 @@ function LiveAIMockInterview({
           </div>
 
           {renderQuestionCards("Gemini HR Questions", aiInterview.hrQuestions)}
+
           {renderQuestionCards(
             "Gemini Role-Based Questions",
             aiInterview.roleQuestions
           )}
+
           {renderQuestionCards(
             "Gemini Technical Questions",
             aiInterview.technicalQuestions
@@ -240,7 +326,8 @@ const styles = {
     gap: "18px",
   },
   summaryBox: {
-    background: "linear-gradient(135deg, rgba(56,189,248,0.12), rgba(139,92,246,0.12))",
+    background:
+      "linear-gradient(135deg, rgba(56,189,248,0.12), rgba(139,92,246,0.12))",
     border: "1px solid rgba(139,92,246,0.25)",
     borderRadius: "20px",
     padding: "22px",
@@ -259,8 +346,13 @@ const styles = {
   },
   panelTitle: {
     color: "#ffffff",
-    margin: "0 0 16px",
+    margin: "0 0 10px",
     fontSize: "22px",
+  },
+  testInstruction: {
+    color: "#94a3b8",
+    margin: "0 0 16px",
+    lineHeight: "1.6",
   },
   questionList: {
     display: "grid",
@@ -310,13 +402,48 @@ const styles = {
     gap: "10px",
     marginTop: "12px",
   },
-  optionBox: {
+  optionButton: {
     background: "rgba(30,41,59,0.8)",
-    border: "1px solid rgba(148,163,184,0.14)",
+    border: "1px solid rgba(148,163,184,0.18)",
     color: "#e2e8f0",
-    padding: "10px",
+    padding: "14px",
     borderRadius: "12px",
+    fontWeight: "900",
+    fontSize: "15px",
+    cursor: "pointer",
+    textAlign: "left",
+  },
+  selectedOption: {
+    borderColor: "rgba(56,189,248,0.7)",
+    background: "rgba(56,189,248,0.16)",
+  },
+  correctOption: {
+    borderColor: "rgba(34,197,94,0.7)",
+    background: "rgba(34,197,94,0.16)",
+    color: "#bbf7d0",
+  },
+  wrongOption: {
+    borderColor: "rgba(239,68,68,0.7)",
+    background: "rgba(239,68,68,0.16)",
+    color: "#fecaca",
+  },
+  hiddenAnswerNote: {
+    color: "#94a3b8",
+    margin: "14px 0 0",
+    fontSize: "14px",
     fontWeight: "700",
+  },
+  answerRevealBox: {
+    marginTop: "16px",
+    padding: "14px",
+    borderRadius: "14px",
+    background: "rgba(2,6,23,0.45)",
+    border: "1px solid rgba(148,163,184,0.14)",
+  },
+  resultStatus: {
+    fontWeight: "900",
+    margin: "0 0 10px",
+    fontSize: "15px",
   },
   correctAnswer: {
     color: "#bbf7d0",
