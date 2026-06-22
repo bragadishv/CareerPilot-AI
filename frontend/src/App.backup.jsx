@@ -28,7 +28,10 @@ function App() {
 
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("careerpilot_user");
-    if (!savedUser) return null;
+
+    if (!savedUser) {
+      return null;
+    }
 
     try {
       return JSON.parse(savedUser);
@@ -54,7 +57,10 @@ function App() {
   }, [token]);
 
   const saveUserData = (updatedUser) => {
-    if (!updatedUser) return;
+    if (!updatedUser) {
+      return;
+    }
+
     setUser(updatedUser);
     localStorage.setItem("careerpilot_user", JSON.stringify(updatedUser));
   };
@@ -85,7 +91,9 @@ function App() {
 
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
@@ -128,20 +136,27 @@ function App() {
   };
 
   const fetchAnalysisHistory = async (authToken = token) => {
-    if (!authToken) return;
+    if (!authToken) {
+      return;
+    }
 
     try {
       setHistoryLoading(true);
 
       const response = await fetch(`${API_BASE_URL}/api/analysis-history`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
       });
 
       const data = await response.json();
 
       if (data.success) {
         setHistory(data.history || []);
-        if (data.user) saveUserData(data.user);
+
+        if (data.user) {
+          saveUserData(data.user);
+        }
       }
     } catch (error) {
       console.log("Failed to fetch analysis history");
@@ -163,8 +178,13 @@ function App() {
       script.id = "razorpay-checkout-script";
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
 
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
+      script.onload = () => {
+        resolve(true);
+      };
+
+      script.onerror = () => {
+        resolve(false);
+      };
 
       document.body.appendChild(script);
     });
@@ -195,7 +215,9 @@ function App() {
         `${API_BASE_URL}/api/payment/create-order`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -224,7 +246,9 @@ function App() {
         description: orderData.description,
         order_id: orderData.orderId,
         prefill: orderData.prefill,
-        theme: { color: "#2563eb" },
+        theme: {
+          color: "#2563eb",
+        },
         handler: async function (paymentResponse) {
           try {
             const verifyResponse = await fetch(
@@ -297,7 +321,9 @@ function App() {
 
       const response = await fetch(`${API_BASE_URL}/api/upload-resume`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -338,15 +364,26 @@ function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ resumeText, targetRole }),
+        body: JSON.stringify({
+          resumeText,
+          targetRole,
+        }),
       });
 
       const data = await response.json();
       setResult(data);
 
-      if (data.user) saveUserData(data.user);
-      if (data.success) fetchAnalysisHistory();
-      if (data.limitReached) alert(data.message);
+      if (data.user) {
+        saveUserData(data.user);
+      }
+
+      if (data.success) {
+        fetchAnalysisHistory();
+      }
+
+      if (data.limitReached) {
+        alert(data.message);
+      }
     } catch (error) {
       setResult({
         success: false,
@@ -358,25 +395,20 @@ function App() {
   };
 
   const getScoreColor = (score) => {
-    if (score >= 75) return "#22c55e";
-    if (score >= 50) return "#f59e0b";
-    return "#ef4444";
+    if (score >= 75) return "#16a34a";
+    if (score >= 50) return "#ca8a04";
+    return "#dc2626";
   };
 
   const getScoreMessage = (score) => {
-    if (score >= 75) return "Recruiter-ready resume match";
-    if (score >= 50) return "Good profile, needs stronger keywords";
-    return "Needs stronger role-specific optimization";
+    if (score >= 75) return "Strong resume match for this role";
+    if (score >= 50) return "Good start, but needs improvement";
+    return "Needs more role-specific keywords";
   };
 
   const formatDate = (dateValue) => {
     if (!dateValue) return "No date";
     return new Date(dateValue).toLocaleString();
-  };
-
-  const scrollToAnalyzer = () => {
-    const element = document.getElementById("resume-analyzer");
-    if (element) element.scrollIntoView({ behavior: "smooth" });
   };
 
   const downloadPDFReport = () => {
@@ -441,8 +473,8 @@ function App() {
       });
     };
 
-    addTitle("HireNexa AI Resume Intelligence Report");
-    addSmallText(`User: ${user?.name || "HireNexa User"}`);
+    addTitle("CareerPilot AI Resume Report");
+    addSmallText(`User: ${user?.name || "CareerPilot User"}`);
     addSmallText(`Email: ${user?.email || "Not available"}`);
     addSmallText(`Plan: ${user?.plan || "free"}`);
     addSmallText(`Target Role: ${roleLabels[targetRole] || "Fresher General"}`);
@@ -478,36 +510,28 @@ function App() {
     addSectionTitle("Resume Text Used For Analysis");
     addSmallText(resumeText);
 
-    doc.save("HireNexa-AI-Resume-Report.pdf");
+    doc.save("CareerPilot-AI-Resume-Report.pdf");
   };
 
   return (
     <div style={styles.page}>
       <header style={styles.header}>
-        <div style={styles.brandWrap}>
-          <div style={styles.logoIcon}>HN</div>
-          <div>
-            <div style={styles.logo}>HireNexa AI</div>
-            <div style={styles.logoSub}>Career Intelligence Platform</div>
-          </div>
-        </div>
+        <div style={styles.logo}>CareerPilot AI</div>
 
         <div style={styles.headerRight}>
           {user && (
             <div
               style={{
                 ...styles.planBadge,
-                background: isPremium
-                  ? "linear-gradient(135deg, #facc15, #f97316)"
-                  : "rgba(59,130,246,0.14)",
-                color: isPremium ? "#111827" : "#bfdbfe",
+                background: isPremium ? "#fef3c7" : "#dbeafe",
+                color: isPremium ? "#92400e" : "#1d4ed8",
               }}
             >
               {isPremium ? "Premium Plan" : "Free Plan"}
             </div>
           )}
 
-          <div style={styles.headerBadge}>AI-Powered Career Intelligence</div>
+          <div style={styles.headerBadge}>AI Job Accelerator</div>
 
           {user && (
             <button style={styles.logoutButton} onClick={logout}>
@@ -518,118 +542,39 @@ function App() {
       </header>
 
       <section style={styles.hero}>
-        <div style={styles.heroGlowOne}></div>
-        <div style={styles.heroGlowTwo}></div>
+        <div style={styles.heroText}>
+          <p style={styles.smallTag}>
+            For Freshers, Job Seekers & Career Switchers
+          </p>
+          <h1 style={styles.heroTitle}>
+            Analyze your resume and get a career improvement plan instantly
+          </h1>
+          <p style={styles.heroSubtitle}>
+            Upload your resume, check ATS score, identify missing skills,
+            generate interview questions, and download a complete PDF career report.
+          </p>
 
-        <div style={styles.heroGrid}>
-          <div style={styles.heroText}>
-            <p style={styles.smallTag}>
-              For Freshers, Job Seekers & Career Switchers
-            </p>
-
-            <h1 style={styles.heroTitle}>
-              Land More Interviews with AI-Powered Resume Intelligence
-            </h1>
-
-            <p style={styles.heroSubtitle}>
-              Optimize your resume for ATS systems, identify missing skills,
-              generate interview questions, and build a personalized career
-              roadmap that makes recruiters notice you.
-            </p>
-
-            <div style={styles.heroActions}>
-              <button style={styles.heroPrimaryButton} onClick={scrollToAnalyzer}>
-                Analyze Resume Free
-              </button>
-              <button style={styles.heroSecondaryButton} onClick={scrollToAnalyzer}>
-                View AI Report
-              </button>
-            </div>
-
-            <div style={styles.trustRow}>
-              <div>
-                <strong>50K+</strong>
-                <span> Resumes Analyzed</span>
-              </div>
-              <div>
-                <strong>92%</strong>
-                <span> ATS Improvement</span>
-              </div>
-              <div>
-                <strong>15K+</strong>
-                <span> Candidates Helped</span>
-              </div>
-            </div>
+          <div style={styles.featureGrid}>
+            <div style={styles.featureCard}>ATS Score</div>
+            <div style={styles.featureCard}>Skill Gap</div>
+            <div style={styles.featureCard}>Career Roadmap</div>
+            <div style={styles.featureCard}>Premium PDF Report</div>
           </div>
-
-          <div style={styles.heroPanel}>
-            <div style={styles.panelTop}>
-              <span style={styles.liveDot}></span>
-              Resume Intelligence Scan
-            </div>
-
-            <div style={styles.scorePreview}>
-              <div>
-                <p style={styles.previewLabel}>Recruiter Readiness</p>
-                <h2 style={styles.previewScore}>86%</h2>
-              </div>
-              <div style={styles.ring}>ATS</div>
-            </div>
-
-            <div style={styles.previewBars}>
-              <div>
-                <span>ATS Keywords</span>
-                <div style={styles.barTrack}>
-                  <div style={{ ...styles.barFill, width: "88%" }}></div>
-                </div>
-              </div>
-
-              <div>
-                <span>Skill Match</span>
-                <div style={styles.barTrack}>
-                  <div style={{ ...styles.barFill, width: "74%" }}></div>
-                </div>
-              </div>
-
-              <div>
-                <span>Interview Readiness</span>
-                <div style={styles.barTrack}>
-                  <div style={{ ...styles.barFill, width: "81%" }}></div>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.aiInsight}>
-              AI Insight: Add stronger role-specific keywords and measurable
-              achievements to increase recruiter shortlisting chances.
-            </div>
-          </div>
-        </div>
-
-        <div style={styles.featureGrid}>
-          <div style={styles.featureCard}>ATS Optimization</div>
-          <div style={styles.featureCard}>Resume DNA</div>
-          <div style={styles.featureCard}>Mock Interviews</div>
-          <div style={styles.featureCard}>Recruiter Ready</div>
         </div>
       </section>
 
       <main style={styles.main}>
         {!user && (
           <section style={styles.authCard}>
-            <div style={styles.sectionHeader}>
-              <p style={styles.sectionEyebrow}>Secure Access</p>
-              <h2 style={styles.sectionTitle}>
-                {authMode === "login"
-                  ? "Login to HireNexa AI"
-                  : "Create Your HireNexa Account"}
-              </h2>
+            <h2 style={styles.sectionTitle}>
+              {authMode === "login"
+                ? "Login to CareerPilot AI"
+                : "Create Your Account"}
+            </h2>
 
-              <p style={styles.sectionSubtitle}>
-                Login is required to upload resumes, save reports, and view your
-                AI-powered career analysis history.
-              </p>
-            </div>
+            <p style={styles.sectionSubtitle}>
+              Login is required to upload resumes, save reports, and view analysis history.
+            </p>
 
             {authMode === "signup" && (
               <>
@@ -688,17 +633,16 @@ function App() {
             <section style={styles.userCard}>
               <div style={styles.userTop}>
                 <div>
-                  <p style={styles.sectionEyebrow}>Candidate Dashboard</p>
                   <h2 style={styles.welcomeTitle}>Welcome, {user.name} 👋</h2>
                   <p style={styles.sectionSubtitle}>
-                    Your AI career reports are saved under: {user.email}
+                    Your reports are saved under: {user.email}
                   </p>
                 </div>
 
                 <div
                   style={{
                     ...styles.planBox,
-                    borderColor: isPremium ? "#facc15" : "#38bdf8",
+                    borderColor: isPremium ? "#f59e0b" : "#2563eb",
                   }}
                 >
                   <p style={styles.planLabel}>Current Plan</p>
@@ -727,13 +671,11 @@ function App() {
               )}
             </section>
 
-            <section id="resume-analyzer" style={styles.formCard}>
+            <section style={styles.formCard}>
               <div style={styles.sectionHeader}>
-                <p style={styles.sectionEyebrow}>AI Resume Engine</p>
                 <h2 style={styles.sectionTitle}>Resume Analyzer</h2>
                 <p style={styles.sectionSubtitle}>
-                  Select a target role, upload your resume PDF, and generate an
-                  AI-powered recruiter readiness report.
+                  Select a target role, upload your resume PDF, and generate your analysis.
                 </p>
               </div>
 
@@ -763,9 +705,7 @@ function App() {
               )}
 
               <button style={styles.uploadButton} onClick={uploadResumePDF}>
-                {uploading
-                  ? "Extracting Resume Text..."
-                  : "Upload PDF & Extract Text"}
+                {uploading ? "Extracting Resume Text..." : "Upload PDF & Extract Text"}
               </button>
 
               <label style={styles.label}>Resume Text</label>
@@ -784,17 +724,13 @@ function App() {
                 style={{
                   ...styles.downloadButton,
                   background:
-                    result && result.success && isPremium
-                      ? "linear-gradient(135deg, #111827, #334155)"
-                      : "#64748b",
+                    result && result.success && isPremium ? "#111827" : "#9ca3af",
                   cursor:
-                    result && result.success && isPremium
-                      ? "pointer"
-                      : "not-allowed",
+                    result && result.success && isPremium ? "pointer" : "not-allowed",
                 }}
                 onClick={downloadPDFReport}
               >
-                Download Premium PDF Report {isPremium ? "" : "(Premium)"}
+                Download PDF Report {isPremium ? "" : "(Premium)"}
               </button>
             </section>
           </>
@@ -881,9 +817,7 @@ function App() {
         {result && !result.success && (
           <section style={styles.errorCard}>
             <h3 style={styles.errorTitle}>
-              {result.limitReached
-                ? "Free Plan Limit Reached"
-                : "Something went wrong"}
+              {result.limitReached ? "Free Plan Limit Reached" : "Something went wrong"}
             </h3>
             <p style={styles.errorText}>{result.message}</p>
 
@@ -898,11 +832,9 @@ function App() {
         {user && (
           <section style={styles.pricingSection}>
             <div style={styles.sectionHeader}>
-              <p style={styles.sectionEyebrow}>Simple Pricing</p>
               <h2 style={styles.sectionTitle}>Pricing Plans</h2>
               <p style={styles.sectionSubtitle}>
-                Start free. Upgrade when you need unlimited career intelligence
-                and premium PDF reports.
+                Start free. Upgrade when you need unlimited analysis and PDF reports.
               </p>
             </div>
 
@@ -955,11 +887,9 @@ function App() {
           <section style={styles.historySection}>
             <div style={styles.historyHeader}>
               <div>
-                <p style={styles.sectionEyebrow}>Progress Tracking</p>
                 <h2 style={styles.sectionTitle}>My Analysis History</h2>
                 <p style={styles.sectionSubtitle}>
-                  Free users see latest 3 records. Premium users see extended
-                  history.
+                  Free users see latest 3 records. Premium users see extended history.
                 </p>
               </div>
 
@@ -1019,8 +949,7 @@ function App() {
       </main>
 
       <footer style={styles.footer}>
-        HireNexa AI — AI-powered resume analysis, career planning, and recruiter
-        readiness intelligence.
+        CareerPilot AI — Built for resume analysis, career planning, and job preparation.
       </footer>
     </div>
   );
@@ -1029,301 +958,118 @@ function App() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background:
-      "radial-gradient(circle at top left, rgba(59,130,246,0.22), transparent 32%), linear-gradient(135deg, #020617 0%, #0f172a 45%, #111827 100%)",
-    fontFamily:
-      "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-    color: "#e5e7eb",
+    background: "#eef2ff",
+    fontFamily: "Arial, sans-serif",
+    color: "#111827",
   },
   header: {
     width: "100%",
     padding: "18px 8%",
-    background: "rgba(2, 6, 23, 0.78)",
-    backdropFilter: "blur(18px)",
+    background: "#ffffff",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    borderBottom: "1px solid rgba(148,163,184,0.18)",
+    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
     position: "sticky",
     top: 0,
     zIndex: 10,
   },
-  brandWrap: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  },
-  logoIcon: {
-    width: "42px",
-    height: "42px",
-    borderRadius: "14px",
-    display: "grid",
-    placeItems: "center",
-    background: "linear-gradient(135deg, #38bdf8, #8b5cf6)",
-    color: "#ffffff",
-    fontWeight: "900",
-    boxShadow: "0 12px 35px rgba(59,130,246,0.35)",
-  },
   logo: {
-    fontSize: "23px",
-    fontWeight: "900",
-    color: "#ffffff",
-    letterSpacing: "-0.04em",
-  },
-  logoSub: {
-    fontSize: "12px",
-    color: "#94a3b8",
-    marginTop: "2px",
+    fontSize: "24px",
+    fontWeight: "bold",
+    color: "#111827",
   },
   headerRight: {
     display: "flex",
     alignItems: "center",
     gap: "12px",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
   },
   planBadge: {
     padding: "8px 14px",
     borderRadius: "999px",
-    fontSize: "13px",
-    fontWeight: "800",
+    fontSize: "14px",
+    fontWeight: "bold",
   },
   headerBadge: {
-    background: "rgba(14,165,233,0.14)",
-    color: "#bae6fd",
+    background: "#dbeafe",
+    color: "#1d4ed8",
     padding: "8px 14px",
     borderRadius: "999px",
-    fontSize: "13px",
-    fontWeight: "800",
-    border: "1px solid rgba(56,189,248,0.22)",
+    fontSize: "14px",
+    fontWeight: "bold",
   },
   logoutButton: {
-    border: "1px solid rgba(248,113,113,0.35)",
-    background: "rgba(220,38,38,0.18)",
-    color: "#fecaca",
+    border: "none",
+    background: "#dc2626",
+    color: "white",
     padding: "9px 14px",
-    borderRadius: "10px",
+    borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "800",
+    fontWeight: "bold",
   },
   hero: {
-    position: "relative",
-    overflow: "hidden",
-    padding: "72px 8% 42px",
-  },
-  heroGlowOne: {
-    position: "absolute",
-    top: "80px",
-    right: "8%",
-    width: "300px",
-    height: "300px",
-    background: "rgba(139,92,246,0.28)",
-    filter: "blur(90px)",
-    borderRadius: "50%",
-  },
-  heroGlowTwo: {
-    position: "absolute",
-    bottom: "20px",
-    left: "10%",
-    width: "260px",
-    height: "260px",
-    background: "rgba(6,182,212,0.22)",
-    filter: "blur(90px)",
-    borderRadius: "50%",
-  },
-  heroGrid: {
-    position: "relative",
-    zIndex: 1,
-    maxWidth: "1200px",
-    margin: "0 auto",
-    display: "grid",
-    gridTemplateColumns: "1.15fr 0.85fr",
-    gap: "34px",
-    alignItems: "center",
+    padding: "60px 8% 35px",
+    textAlign: "center",
   },
   heroText: {
-    maxWidth: "760px",
+    maxWidth: "950px",
+    margin: "0 auto",
   },
   smallTag: {
     display: "inline-block",
-    background: "rgba(59,130,246,0.16)",
-    color: "#bfdbfe",
-    padding: "9px 15px",
+    background: "#e0e7ff",
+    color: "#3730a3",
+    padding: "8px 14px",
     borderRadius: "999px",
     fontSize: "14px",
-    fontWeight: "800",
-    marginBottom: "22px",
-    border: "1px solid rgba(96,165,250,0.24)",
+    fontWeight: "bold",
+    marginBottom: "18px",
   },
   heroTitle: {
-    fontSize: "58px",
-    lineHeight: "1.02",
-    margin: "0 0 20px",
-    color: "#ffffff",
-    letterSpacing: "-0.06em",
-    maxWidth: "760px",
+    fontSize: "48px",
+    lineHeight: "1.1",
+    margin: "0 0 18px",
+    color: "#111827",
   },
   heroSubtitle: {
     fontSize: "18px",
-    lineHeight: "1.8",
-    maxWidth: "720px",
-    margin: "0",
-    color: "#cbd5e1",
-  },
-  heroActions: {
-    display: "flex",
-    gap: "14px",
-    marginTop: "30px",
-    flexWrap: "wrap",
-  },
-  heroPrimaryButton: {
-    padding: "15px 22px",
-    border: "none",
-    borderRadius: "14px",
-    background: "linear-gradient(135deg, #38bdf8, #3b82f6, #8b5cf6)",
-    color: "#ffffff",
-    fontSize: "16px",
-    cursor: "pointer",
-    fontWeight: "900",
-    boxShadow: "0 18px 45px rgba(59,130,246,0.32)",
-  },
-  heroSecondaryButton: {
-    padding: "15px 22px",
-    border: "1px solid rgba(148,163,184,0.28)",
-    borderRadius: "14px",
-    background: "rgba(15,23,42,0.72)",
-    color: "#e2e8f0",
-    fontSize: "16px",
-    cursor: "pointer",
-    fontWeight: "900",
-  },
-  trustRow: {
-    display: "flex",
-    gap: "18px",
-    flexWrap: "wrap",
-    marginTop: "30px",
-    color: "#94a3b8",
-  },
-  heroPanel: {
-    background: "rgba(15,23,42,0.74)",
-    border: "1px solid rgba(148,163,184,0.22)",
-    borderRadius: "28px",
-    padding: "28px",
-    boxShadow: "0 28px 80px rgba(0,0,0,0.38)",
-    backdropFilter: "blur(22px)",
-  },
-  panelTop: {
-    color: "#cbd5e1",
-    fontWeight: "800",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    marginBottom: "22px",
-  },
-  liveDot: {
-    width: "10px",
-    height: "10px",
-    borderRadius: "999px",
-    background: "#22c55e",
-    boxShadow: "0 0 18px rgba(34,197,94,0.95)",
-  },
-  scorePreview: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "18px",
-    marginBottom: "24px",
-  },
-  previewLabel: {
-    color: "#94a3b8",
-    margin: 0,
-    fontSize: "14px",
-  },
-  previewScore: {
-    margin: "6px 0 0",
-    fontSize: "58px",
-    color: "#ffffff",
-    letterSpacing: "-0.06em",
-  },
-  ring: {
-    width: "100px",
-    height: "100px",
-    borderRadius: "50%",
-    display: "grid",
-    placeItems: "center",
-    background:
-      "conic-gradient(#22c55e 0deg 310deg, rgba(148,163,184,0.2) 310deg 360deg)",
-    color: "#ffffff",
-    fontWeight: "900",
-    border: "8px solid rgba(15,23,42,0.95)",
-  },
-  previewBars: {
-    display: "grid",
-    gap: "16px",
-    color: "#cbd5e1",
-    fontSize: "14px",
-  },
-  barTrack: {
-    height: "10px",
-    borderRadius: "999px",
-    background: "rgba(148,163,184,0.18)",
-    marginTop: "8px",
-    overflow: "hidden",
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: "999px",
-    background: "linear-gradient(90deg, #38bdf8, #8b5cf6)",
-  },
-  aiInsight: {
-    marginTop: "22px",
-    padding: "16px",
-    borderRadius: "18px",
-    background: "rgba(6,182,212,0.12)",
-    border: "1px solid rgba(6,182,212,0.24)",
-    color: "#cffafe",
-    lineHeight: "1.6",
-    fontSize: "14px",
+    lineHeight: "1.7",
+    maxWidth: "760px",
+    margin: "0 auto",
+    color: "#4b5563",
   },
   featureGrid: {
-    position: "relative",
-    zIndex: 1,
-    maxWidth: "1200px",
-    margin: "42px auto 0",
     display: "grid",
     gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "16px",
+    gap: "14px",
+    marginTop: "30px",
   },
   featureCard: {
-    background: "rgba(15,23,42,0.68)",
-    padding: "20px",
-    borderRadius: "18px",
-    border: "1px solid rgba(148,163,184,0.18)",
-    fontWeight: "900",
-    color: "#f8fafc",
-    boxShadow: "0 18px 45px rgba(0,0,0,0.24)",
-    textAlign: "center",
+    background: "#ffffff",
+    padding: "18px",
+    borderRadius: "14px",
+    boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
+    fontWeight: "bold",
+    color: "#1f2937",
   },
   main: {
     width: "100%",
-    maxWidth: "1120px",
+    maxWidth: "1100px",
     margin: "0 auto",
-    padding: "24px 20px 60px",
+    padding: "20px 20px 50px",
   },
   authCard: {
-    background: "rgba(15,23,42,0.84)",
-    padding: "36px",
-    borderRadius: "26px",
-    border: "1px solid rgba(148,163,184,0.22)",
-    boxShadow: "0 25px 75px rgba(0,0,0,0.32)",
+    background: "#ffffff",
+    padding: "35px",
+    borderRadius: "20px",
+    boxShadow: "0 12px 35px rgba(0,0,0,0.08)",
     marginBottom: "30px",
   },
   userCard: {
-    background: "rgba(15,23,42,0.84)",
-    padding: "30px 36px",
-    borderRadius: "26px",
-    border: "1px solid rgba(148,163,184,0.22)",
-    boxShadow: "0 25px 75px rgba(0,0,0,0.32)",
+    background: "#ffffff",
+    padding: "25px 35px",
+    borderRadius: "20px",
+    boxShadow: "0 12px 35px rgba(0,0,0,0.08)",
     marginBottom: "30px",
   },
   userTop: {
@@ -1331,219 +1077,188 @@ const styles = {
     justifyContent: "space-between",
     gap: "20px",
     alignItems: "center",
-    flexWrap: "wrap",
   },
   welcomeTitle: {
-    fontSize: "32px",
+    fontSize: "28px",
     margin: "0 0 8px",
-    color: "#ffffff",
-    letterSpacing: "-0.04em",
   },
   planBox: {
-    minWidth: "190px",
-    border: "2px solid #38bdf8",
-    borderRadius: "20px",
-    padding: "18px",
-    background: "rgba(2,6,23,0.45)",
+    minWidth: "180px",
+    border: "2px solid #2563eb",
+    borderRadius: "16px",
+    padding: "16px",
+    background: "#f9fafb",
   },
   planLabel: {
     margin: "0 0 4px",
-    color: "#94a3b8",
+    color: "#6b7280",
     fontSize: "13px",
   },
   planName: {
     margin: "0 0 8px",
-    fontSize: "26px",
-    color: "#ffffff",
+    fontSize: "24px",
   },
   planUsage: {
     margin: "4px 0",
     fontSize: "14px",
-    color: "#cbd5e1",
+    color: "#374151",
   },
   limitNotice: {
-    background: "rgba(251,146,60,0.12)",
-    color: "#fed7aa",
+    background: "#fff7ed",
+    color: "#9a3412",
     padding: "14px",
-    borderRadius: "14px",
-    marginTop: "18px",
-    fontWeight: "800",
-    border: "1px solid rgba(251,146,60,0.22)",
+    borderRadius: "12px",
+    marginTop: "16px",
+    fontWeight: "bold",
   },
   premiumNotice: {
-    background: "rgba(34,197,94,0.12)",
-    color: "#bbf7d0",
+    background: "#ecfdf5",
+    color: "#047857",
     padding: "14px",
-    borderRadius: "14px",
-    marginTop: "18px",
-    fontWeight: "800",
-    border: "1px solid rgba(34,197,94,0.22)",
+    borderRadius: "12px",
+    marginTop: "16px",
+    fontWeight: "bold",
   },
   formCard: {
-    background: "rgba(15,23,42,0.84)",
-    padding: "36px",
-    borderRadius: "26px",
-    border: "1px solid rgba(148,163,184,0.22)",
-    boxShadow: "0 25px 75px rgba(0,0,0,0.32)",
+    background: "#ffffff",
+    padding: "35px",
+    borderRadius: "20px",
+    boxShadow: "0 12px 35px rgba(0,0,0,0.08)",
     marginBottom: "30px",
   },
   sectionHeader: {
     marginBottom: "25px",
   },
-  sectionEyebrow: {
-    color: "#38bdf8",
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: "0.12em",
-    fontSize: "12px",
-    margin: "0 0 8px",
-  },
   sectionTitle: {
-    fontSize: "32px",
-    margin: "0 0 10px",
-    color: "#ffffff",
-    letterSpacing: "-0.04em",
+    fontSize: "30px",
+    margin: "0 0 8px",
   },
   sectionSubtitle: {
     fontSize: "16px",
-    color: "#94a3b8",
+    color: "#6b7280",
     margin: "0 0 20px",
-    lineHeight: "1.7",
   },
   label: {
     display: "block",
-    fontSize: "15px",
-    fontWeight: "800",
-    color: "#e2e8f0",
+    fontSize: "16px",
+    fontWeight: "bold",
+    color: "#111827",
     marginBottom: "8px",
   },
   input: {
     width: "100%",
-    padding: "15px",
+    padding: "14px",
     fontSize: "16px",
-    borderRadius: "14px",
-    border: "1px solid rgba(148,163,184,0.26)",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
     marginBottom: "18px",
-    background: "rgba(2,6,23,0.45)",
-    color: "#ffffff",
-    outline: "none",
+    background: "#ffffff",
   },
   select: {
     width: "100%",
-    padding: "15px",
+    padding: "14px",
     fontSize: "16px",
-    borderRadius: "14px",
-    border: "1px solid rgba(148,163,184,0.26)",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
     marginBottom: "20px",
-    background: "rgba(2,6,23,0.75)",
-    color: "#ffffff",
-    outline: "none",
+    background: "#ffffff",
   },
   fileInput: {
     width: "100%",
-    padding: "15px",
+    padding: "14px",
     fontSize: "15px",
-    borderRadius: "14px",
-    border: "1px solid rgba(148,163,184,0.26)",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
     marginBottom: "8px",
-    background: "rgba(2,6,23,0.45)",
-    color: "#cbd5e1",
+    background: "#ffffff",
   },
   fileName: {
     fontSize: "14px",
-    color: "#cbd5e1",
+    color: "#4b5563",
     marginBottom: "14px",
   },
   textarea: {
     width: "100%",
-    minHeight: "230px",
+    minHeight: "220px",
     padding: "15px",
     fontSize: "16px",
-    borderRadius: "14px",
-    border: "1px solid rgba(148,163,184,0.26)",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
     resize: "vertical",
     marginBottom: "20px",
-    background: "rgba(2,6,23,0.45)",
-    color: "#ffffff",
-    outline: "none",
-    lineHeight: "1.6",
   },
   uploadButton: {
     width: "100%",
-    padding: "15px",
+    padding: "14px",
     border: "none",
-    borderRadius: "14px",
-    background: "linear-gradient(135deg, #059669, #10b981)",
+    borderRadius: "10px",
+    background: "#059669",
     color: "white",
     fontSize: "17px",
     cursor: "pointer",
     marginBottom: "20px",
-    fontWeight: "900",
+    fontWeight: "bold",
   },
   primaryButton: {
     width: "100%",
-    padding: "16px",
+    padding: "15px",
     border: "none",
-    borderRadius: "14px",
-    background: "linear-gradient(135deg, #38bdf8, #3b82f6, #8b5cf6)",
+    borderRadius: "10px",
+    background: "#2563eb",
     color: "white",
     fontSize: "17px",
     cursor: "pointer",
     marginBottom: "12px",
-    fontWeight: "900",
-    boxShadow: "0 16px 35px rgba(59,130,246,0.24)",
+    fontWeight: "bold",
   },
   switchButton: {
     width: "100%",
-    padding: "14px",
-    border: "1px solid rgba(148,163,184,0.26)",
-    borderRadius: "14px",
-    background: "rgba(15,23,42,0.72)",
-    color: "#bae6fd",
+    padding: "13px",
+    border: "1px solid #c7d2fe",
+    borderRadius: "10px",
+    background: "#eef2ff",
+    color: "#3730a3",
     fontSize: "16px",
     cursor: "pointer",
-    fontWeight: "900",
+    fontWeight: "bold",
   },
   downloadButton: {
     width: "100%",
-    padding: "16px",
+    padding: "15px",
     border: "none",
-    borderRadius: "14px",
+    borderRadius: "10px",
     color: "white",
     fontSize: "17px",
     marginBottom: "5px",
-    fontWeight: "900",
+    fontWeight: "bold",
   },
   resultSection: {
     marginTop: "30px",
   },
   scoreCard: {
-    background: "rgba(15,23,42,0.84)",
-    borderRadius: "26px",
-    padding: "34px",
-    border: "1px solid rgba(148,163,184,0.22)",
-    boxShadow: "0 25px 75px rgba(0,0,0,0.32)",
+    background: "#ffffff",
+    borderRadius: "20px",
+    padding: "30px",
+    boxShadow: "0 12px 35px rgba(0,0,0,0.08)",
     textAlign: "center",
     marginBottom: "25px",
   },
   scoreLabel: {
     fontSize: "16px",
-    color: "#94a3b8",
+    color: "#6b7280",
     margin: 0,
   },
   scoreValue: {
-    fontSize: "66px",
+    fontSize: "56px",
     margin: "10px 0",
-    letterSpacing: "-0.06em",
   },
   scoreMessage: {
     fontSize: "18px",
-    fontWeight: "900",
+    fontWeight: "bold",
     margin: "0 0 8px",
-    color: "#ffffff",
   },
   roleText: {
-    color: "#94a3b8",
+    color: "#4b5563",
     margin: 0,
   },
   resultGrid: {
@@ -1552,52 +1267,50 @@ const styles = {
     gap: "20px",
   },
   resultCard: {
-    background: "rgba(15,23,42,0.84)",
-    padding: "26px",
-    borderRadius: "22px",
-    border: "1px solid rgba(148,163,184,0.2)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.26)",
-    lineHeight: "1.7",
+    background: "#ffffff",
+    padding: "24px",
+    borderRadius: "18px",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.07)",
+    lineHeight: "1.6",
   },
   cardTitle: {
     fontSize: "20px",
     marginTop: 0,
     marginBottom: "12px",
-    color: "#ffffff",
+    color: "#111827",
   },
   cardText: {
-    color: "#cbd5e1",
+    color: "#374151",
     margin: 0,
   },
   list: {
     paddingLeft: "20px",
     margin: 0,
-    color: "#cbd5e1",
+    color: "#374151",
   },
   errorCard: {
-    background: "rgba(127,29,29,0.28)",
-    border: "1px solid rgba(248,113,113,0.35)",
+    background: "#fff1f2",
+    border: "1px solid #fecdd3",
     padding: "25px",
-    borderRadius: "20px",
+    borderRadius: "18px",
     marginTop: "25px",
     marginBottom: "25px",
   },
   errorTitle: {
-    color: "#fecaca",
+    color: "#be123c",
     margin: "0 0 10px",
     fontSize: "24px",
   },
   errorText: {
-    color: "#fee2e2",
+    color: "#9f1239",
     fontSize: "16px",
     marginBottom: "18px",
   },
   pricingSection: {
-    background: "rgba(15,23,42,0.84)",
-    padding: "36px",
-    borderRadius: "26px",
-    border: "1px solid rgba(148,163,184,0.22)",
-    boxShadow: "0 25px 75px rgba(0,0,0,0.32)",
+    background: "#ffffff",
+    padding: "35px",
+    borderRadius: "20px",
+    boxShadow: "0 12px 35px rgba(0,0,0,0.08)",
     marginTop: "30px",
   },
   pricingGrid: {
@@ -1606,74 +1319,70 @@ const styles = {
     gap: "22px",
   },
   pricingCard: {
-    border: "1px solid rgba(148,163,184,0.22)",
-    borderRadius: "22px",
-    padding: "28px",
-    background: "rgba(2,6,23,0.45)",
+    border: "1px solid #e5e7eb",
+    borderRadius: "18px",
+    padding: "26px",
+    background: "#f9fafb",
   },
   premiumPricingCard: {
-    border: "2px solid rgba(250,204,21,0.7)",
-    borderRadius: "22px",
-    padding: "28px",
-    background:
-      "linear-gradient(135deg, rgba(250,204,21,0.14), rgba(249,115,22,0.08))",
+    border: "2px solid #f59e0b",
+    borderRadius: "18px",
+    padding: "26px",
+    background: "#fffbeb",
     position: "relative",
   },
   popularBadge: {
     position: "absolute",
     top: "-14px",
     right: "20px",
-    background: "linear-gradient(135deg, #facc15, #f97316)",
+    background: "#f59e0b",
     color: "#111827",
     padding: "7px 12px",
     borderRadius: "999px",
     fontSize: "13px",
-    fontWeight: "900",
+    fontWeight: "bold",
   },
   pricingTitle: {
     fontSize: "26px",
     margin: "0 0 10px",
-    color: "#ffffff",
   },
   price: {
-    fontSize: "40px",
-    fontWeight: "900",
+    fontSize: "36px",
+    fontWeight: "bold",
     margin: "0 0 18px",
-    color: "#ffffff",
   },
   pricingList: {
     paddingLeft: "20px",
-    lineHeight: "1.9",
-    color: "#cbd5e1",
+    lineHeight: "1.8",
+    color: "#374151",
     marginBottom: "24px",
   },
   currentPlanButton: {
     width: "100%",
     padding: "14px",
     border: "none",
-    borderRadius: "14px",
-    background: "#475569",
+    borderRadius: "10px",
+    background: "#6b7280",
     color: "white",
     fontSize: "16px",
-    fontWeight: "900",
+    fontWeight: "bold",
   },
   upgradeButton: {
     width: "100%",
     padding: "14px",
     border: "none",
-    borderRadius: "14px",
-    background: "linear-gradient(135deg, #facc15, #f97316)",
+    borderRadius: "10px",
+    background: "#f59e0b",
     color: "#111827",
     fontSize: "16px",
     cursor: "pointer",
-    fontWeight: "900",
+    fontWeight: "bold",
   },
   historySection: {
-    background: "rgba(15,23,42,0.84)",
-    padding: "36px",
-    borderRadius: "26px",
-    border: "1px solid rgba(148,163,184,0.22)",
-    boxShadow: "0 25px 75px rgba(0,0,0,0.32)",
+    background: "#ffffff",
+    padding: "35px",
+    borderRadius: "20px",
+    boxShadow: "0 12px 35px rgba(0,0,0,0.08)",
     marginTop: "30px",
   },
   historyHeader: {
@@ -1682,17 +1391,16 @@ const styles = {
     alignItems: "center",
     gap: "16px",
     marginBottom: "24px",
-    flexWrap: "wrap",
   },
   secondaryButton: {
-    padding: "13px 18px",
+    padding: "12px 18px",
     border: "none",
-    borderRadius: "14px",
-    background: "linear-gradient(135deg, #4f46e5, #8b5cf6)",
+    borderRadius: "10px",
+    background: "#4f46e5",
     color: "white",
     fontSize: "15px",
     cursor: "pointer",
-    fontWeight: "900",
+    fontWeight: "bold",
     whiteSpace: "nowrap",
   },
   historyGrid: {
@@ -1701,10 +1409,10 @@ const styles = {
     gap: "18px",
   },
   historyCard: {
-    border: "1px solid rgba(148,163,184,0.2)",
-    borderRadius: "20px",
-    padding: "22px",
-    background: "rgba(2,6,23,0.45)",
+    border: "1px solid #e5e7eb",
+    borderRadius: "16px",
+    padding: "20px",
+    background: "#f9fafb",
   },
   historyTop: {
     display: "flex",
@@ -1716,32 +1424,31 @@ const styles = {
   historyRole: {
     fontSize: "18px",
     margin: "0 0 6px",
-    color: "#ffffff",
   },
   historyDate: {
     fontSize: "13px",
-    color: "#94a3b8",
+    color: "#6b7280",
     margin: 0,
   },
   historyScore: {
-    fontSize: "30px",
-    fontWeight: "900",
+    fontSize: "28px",
+    fontWeight: "bold",
   },
   historyMeta: {
     fontSize: "14px",
-    color: "#cbd5e1",
-    lineHeight: "1.6",
+    color: "#374151",
+    lineHeight: "1.5",
   },
   emptyText: {
-    color: "#94a3b8",
+    color: "#6b7280",
     fontSize: "15px",
   },
   footer: {
-    padding: "28px",
+    padding: "25px",
     textAlign: "center",
-    color: "#94a3b8",
-    background: "rgba(2,6,23,0.85)",
-    borderTop: "1px solid rgba(148,163,184,0.18)",
+    color: "#6b7280",
+    background: "#ffffff",
+    borderTop: "1px solid #e5e7eb",
   },
 };
 

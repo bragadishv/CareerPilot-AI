@@ -1,17 +1,221 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
 }
 
-html,
-body,
-#root {
-  width: 100%;
-  min-height: 100vh;
-  font-family: Arial, sans-serif;
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: #f4f7fb;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: #020617;
+  color: #e5e7eb;
+  overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease,
+    border-color 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  opacity: 0.96;
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  transform: none;
+}
+
+input,
+select,
+textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(56, 189, 248, 0.75) !important;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.14);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #64748b;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  padding-left: 22px;
+}
+
+li {
+  margin-bottom: 8px;
+}
+
+/* Better file upload button */
+input[type="file"]::file-selector-button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-right: 12px;
+  background: linear-gradient(135deg, #38bdf8, #8b5cf6);
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Premium scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #38bdf8, #8b5cf6);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #0ea5e9, #7c3aed);
+}
+
+/* Responsive fixes for the current inline-style layout */
+@media (max-width: 1100px) {
+  div[style*="grid-template-columns: 1.15fr 0.85fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  div[style*="font-size: 58px"] {
+    font-size: 48px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  header {
+    padding: 16px 5% !important;
+  }
+
+  div[style*="grid-template-columns: repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  div[style*="grid-template-columns: repeat(2, 1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  div[style*="font-size: 58px"] {
+    font-size: 42px !important;
+  }
+
+  div[style*="font-size: 66px"] {
+    font-size: 54px !important;
+  }
+
+  section {
+    padding-left: 5% !important;
+    padding-right: 5% !important;
+  }
+}
+
+@media (max-width: 700px) {
+  header {
+    align-items: flex-start !important;
+    gap: 16px !important;
+    flex-direction: column !important;
+  }
+
+  div[style*="display: flex"][style*="justify-content: flex-end"] {
+    justify-content: flex-start !important;
+  }
+
+  div[style*="font-size: 58px"] {
+    font-size: 34px !important;
+    line-height: 1.1 !important;
+  }
+
+  p {
+    font-size: 15px;
+  }
+
+  div[style*="display: flex"][style*="gap: 14px"] {
+    flex-direction: column !important;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  div[style*="width: 100px"][style*="height: 100px"] {
+    width: 82px !important;
+    height: 82px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  div[style*="grid-template-columns: repeat(4, 1fr)"],
+  div[style*="grid-template-columns: repeat(2, 1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  div[style*="font-size: 58px"] {
+    font-size: 30px !important;
+  }
+
+  div[style*="font-size: 40px"] {
+    font-size: 32px !important;
+  }
+
+  div[style*="font-size: 32px"] {
+    font-size: 26px !important;
+  }
+
+  div[style*="padding: 36px"] {
+    padding: 24px !important;
+  }
+
+  div[style*="padding: 34px"] {
+    padding: 24px !important;
+  }
+}
+
+/* Print friendly mode for reports/screenshots */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  button {
+    display: none !important;
+  }
 }
