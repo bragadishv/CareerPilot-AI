@@ -34,17 +34,25 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+const roleLabels = {
+  fresher: "Fresher General",
+  "it-support": "IT Support",
+  "project-coordinator": "Project Coordinator",
+  "customer-support": "Customer Support",
+  "data-analyst": "Data Analyst",
+};
+
 const connectDB = async () => {
   try {
     if (!process.env.MONGO_URI) {
-      console.log("❌ MONGO_URI is missing in .env file");
+      console.log("MONGO_URI is missing in .env file");
       return;
     }
 
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected successfully");
+    console.log("MongoDB connected successfully");
   } catch (error) {
-    console.log("❌ MongoDB connection failed");
+    console.log("MongoDB connection failed");
     console.log(error.message);
   }
 };
@@ -141,6 +149,62 @@ const analysisSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    resumeDna: {
+      profileStrength: {
+        type: Number,
+        default: 0,
+      },
+      keywordStrength: {
+        type: Number,
+        default: 0,
+      },
+      skillsMatch: {
+        type: Number,
+        default: 0,
+      },
+      experienceQuality: {
+        type: Number,
+        default: 0,
+      },
+      projectStrength: {
+        type: Number,
+        default: 0,
+      },
+      communicationQuality: {
+        type: Number,
+        default: 0,
+      },
+      recruiterReadiness: {
+        type: Number,
+        default: 0,
+      },
+      summary: {
+        type: String,
+        default: "",
+      },
+    },
+    mockInterview: {
+      hrQuestions: {
+        type: [String],
+        default: [],
+      },
+      roleQuestions: {
+        type: [String],
+        default: [],
+      },
+      technicalQuestions: {
+        type: [String],
+        default: [],
+      },
+      answerApproach: {
+        type: [String],
+        default: [],
+      },
+      preparationPlan: {
+        type: [String],
+        default: [],
+      },
+    },
     resumeText: {
       type: String,
       required: true,
@@ -234,14 +298,312 @@ const verifyRazorpaySignature = ({
   );
 };
 
+const clampScore = (score) => {
+  return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+const hasAnyKeyword = (resumeLower, keywords) => {
+  return keywords.some((keyword) => resumeLower.includes(keyword));
+};
+
+const calculateResumeDna = ({
+  resumeLower,
+  atsScore,
+  matchedSkills,
+  missingSkills,
+}) => {
+  const hasSummary = hasAnyKeyword(resumeLower, [
+    "summary",
+    "profile",
+    "objective",
+    "career objective",
+  ]);
+
+  const hasSkills = hasAnyKeyword(resumeLower, [
+    "skills",
+    "technical skills",
+    "core skills",
+  ]);
+
+  const hasExperience = hasAnyKeyword(resumeLower, [
+    "experience",
+    "work experience",
+    "employment",
+    "internship",
+  ]);
+
+  const hasProject = hasAnyKeyword(resumeLower, [
+    "project",
+    "projects",
+    "portfolio",
+    "case study",
+  ]);
+
+  const hasAchievement = hasAnyKeyword(resumeLower, [
+    "achievement",
+    "achievements",
+    "award",
+    "awards",
+    "recognition",
+    "improved",
+    "reduced",
+    "increased",
+  ]);
+
+  const hasEducation = hasAnyKeyword(resumeLower, [
+    "education",
+    "degree",
+    "college",
+    "university",
+    "school",
+  ]);
+
+  const hasNumbers = /\b\d+(\.\d+)?%?\b/.test(resumeLower);
+
+  const hasActionWords = hasAnyKeyword(resumeLower, [
+    "managed",
+    "handled",
+    "coordinated",
+    "supported",
+    "resolved",
+    "developed",
+    "built",
+    "created",
+    "analyzed",
+    "reported",
+    "implemented",
+    "improved",
+  ]);
+
+  const hasCommunicationSignals = hasAnyKeyword(resumeLower, [
+    "communication",
+    "stakeholder",
+    "customer",
+    "client",
+    "presentation",
+    "reporting",
+    "team",
+    "leadership",
+  ]);
+
+  const skillsTotal = matchedSkills.length + missingSkills.length;
+
+  const profileStrength = clampScore(
+    (hasSummary ? 20 : 0) +
+      (hasSkills ? 20 : 0) +
+      (hasExperience ? 20 : 0) +
+      (hasProject ? 15 : 0) +
+      (hasAchievement ? 15 : 0) +
+      (hasEducation ? 10 : 0)
+  );
+
+  const keywordStrength = clampScore(atsScore);
+
+  const skillsMatch = clampScore(
+    skillsTotal > 0 ? (matchedSkills.length / skillsTotal) * 100 : 0
+  );
+
+  const experienceQuality = clampScore(
+    (hasExperience ? 30 : 0) +
+      (hasActionWords ? 25 : 0) +
+      (hasNumbers ? 25 : 0) +
+      (hasAchievement ? 20 : 0)
+  );
+
+  const projectStrength = clampScore(
+    (hasProject ? 45 : 0) +
+      (hasActionWords ? 20 : 0) +
+      (hasNumbers ? 15 : 0) +
+      (matchedSkills.length >= 3 ? 20 : matchedSkills.length * 6)
+  );
+
+  const communicationQuality = clampScore(
+    (hasCommunicationSignals ? 40 : 0) +
+      (hasSummary ? 20 : 0) +
+      (hasActionWords ? 20 : 0) +
+      (resumeLower.length > 800 ? 20 : 10)
+  );
+
+  const recruiterReadiness = clampScore(
+    (profileStrength +
+      keywordStrength +
+      skillsMatch +
+      experienceQuality +
+      projectStrength +
+      communicationQuality) /
+      6
+  );
+
+  let summary =
+    "Your resume has potential, but it needs stronger role-specific positioning.";
+
+  if (recruiterReadiness >= 75) {
+    summary =
+      "Your resume is strong and recruiter-friendly. Focus on polishing achievements, numbers, and interview preparation.";
+  } else if (recruiterReadiness >= 50) {
+    summary =
+      "Your resume has a good base. Improve role-specific keywords, measurable achievements, and project clarity.";
+  }
+
+  return {
+    profileStrength,
+    keywordStrength,
+    skillsMatch,
+    experienceQuality,
+    projectStrength,
+    communicationQuality,
+    recruiterReadiness,
+    summary,
+  };
+};
+
+const createMockInterviewCoach = ({
+  selectedRole,
+  matchedSkills,
+  missingSkills,
+  atsScore,
+}) => {
+  const roleName = roleLabels[selectedRole] || "Fresher General";
+
+  const hrQuestions = [
+    "Tell me about yourself in 60 seconds.",
+    "Why are you interested in this role?",
+    "What are your top strengths for this role?",
+    "Tell me about a challenge you faced and how you handled it.",
+    "Why should we hire you over other candidates?",
+  ];
+
+  const roleQuestionsByRole = {
+    fresher: [
+      "How will you quickly learn new tasks in your first job?",
+      "Tell me about a college project or assignment you completed.",
+      "How do you handle feedback from seniors or managers?",
+      "How do you manage deadlines when multiple tasks are assigned?",
+      "What skills are you currently improving for your career?",
+    ],
+    "it-support": [
+      "How would you troubleshoot a laptop that is running slowly?",
+      "How would you handle a user who cannot connect to Wi-Fi?",
+      "How do you prioritize multiple support tickets?",
+      "How would you explain a technical issue to a non-technical customer?",
+      "What steps would you follow before escalating an issue?",
+    ],
+    "project-coordinator": [
+      "How do you track project progress and pending tasks?",
+      "How would you handle a project delay?",
+      "How do you communicate status updates to stakeholders?",
+      "How would you coordinate with multiple teams at the same time?",
+      "What project tracking tools or methods do you know?",
+    ],
+    "customer-support": [
+      "How would you handle an angry customer?",
+      "How do you manage repeated customer complaints?",
+      "How would you improve customer satisfaction?",
+      "How do you handle escalation cases?",
+      "What does excellent customer service mean to you?",
+    ],
+    "data-analyst": [
+      "How do you clean messy data before analysis?",
+      "How would you explain insights from a dashboard to a manager?",
+      "What is the difference between Excel and SQL?",
+      "How do you decide which chart to use for a report?",
+      "Tell me about a dataset you would like to analyze.",
+    ],
+  };
+
+  const technicalQuestionsByRole = {
+    fresher: [
+      "What basic tools are you comfortable using for work?",
+      "How do you use Excel or spreadsheets?",
+      "What is your approach to learning a new software tool?",
+      "How do you organize your tasks during the day?",
+      "What is one project you can explain clearly from start to finish?",
+    ],
+    "it-support": [
+      "What is the difference between hardware and software?",
+      "What is an IP address?",
+      "What is the difference between LAN and Wi-Fi?",
+      "What would you check if a printer is not working?",
+      "What is the purpose of a ticketing system?",
+    ],
+    "project-coordinator": [
+      "What is a project milestone?",
+      "What is the difference between a task and a deliverable?",
+      "How do you prepare a project status report?",
+      "What is risk tracking in project management?",
+      "What is stakeholder communication?",
+    ],
+    "customer-support": [
+      "What is a CRM tool?",
+      "What is ticket resolution time?",
+      "What is customer satisfaction score?",
+      "How do you document a customer issue?",
+      "What is the difference between first-level and second-level support?",
+    ],
+    "data-analyst": [
+      "What is a pivot table?",
+      "What is SQL used for?",
+      "What is data cleaning?",
+      "What is Power BI used for?",
+      "What is the difference between a table and a dashboard?",
+    ],
+  };
+
+  const roleQuestions =
+    roleQuestionsByRole[selectedRole] || roleQuestionsByRole.fresher;
+
+  const technicalQuestions =
+    technicalQuestionsByRole[selectedRole] || technicalQuestionsByRole.fresher;
+
+  const strongestSkills =
+    matchedSkills.length > 0
+      ? matchedSkills.slice(0, 4).join(", ")
+      : "communication, learning ability, and problem solving";
+
+  const priorityGaps =
+    missingSkills.length > 0
+      ? missingSkills.slice(0, 5).join(", ")
+      : "role-specific examples and measurable achievements";
+
+  const answerApproach = [
+    `Use the STAR method: Situation, Task, Action, Result.`,
+    `For ${roleName}, connect every answer to these strengths: ${strongestSkills}.`,
+    `Prepare examples that prove your skills instead of only saying you have them.`,
+    `When asked about weakness or gaps, mention that you are actively improving: ${priorityGaps}.`,
+    `End important answers with a measurable outcome, learning, or business impact.`,
+  ];
+
+  const preparationPlan = [
+    "Prepare a 60-second self-introduction.",
+    "Write 3 examples from your resume using the STAR method.",
+    "Practice the HR questions aloud at least 3 times.",
+    "Revise the missing skills and add them naturally to your resume.",
+    "Prepare one project or work example that matches the selected role.",
+  ];
+
+  if (atsScore < 50) {
+    preparationPlan.unshift(
+      "Before interviews, strengthen your resume because the current ATS score is low."
+    );
+  }
+
+  return {
+    hrQuestions,
+    roleQuestions,
+    technicalQuestions,
+    answerApproach,
+    preparationPlan,
+  };
+};
+
 app.get("/", (req, res) => {
-  res.send("CareerPilot AI Backend is running 🚀");
+  res.send("HireNexa AI Backend is running");
 });
 
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
-    message: "CareerPilot AI Backend connected successfully",
+    message: "HireNexa AI Backend connected successfully",
   });
 });
 
@@ -425,12 +787,12 @@ app.post("/api/payment/create-order", protect, async (req, res) => {
     const order = await razorpay.orders.create({
       amount: PREMIUM_AMOUNT,
       currency: "INR",
-      receipt: `cp_${Date.now()}`,
+      receipt: `hn_${Date.now()}`,
       notes: {
         userId: currentUser._id.toString(),
         email: currentUser.email,
         plan: "premium",
-        product: "CareerPilot AI Premium",
+        product: "HireNexa AI Premium",
       },
     });
 
@@ -441,7 +803,7 @@ app.post("/api/payment/create-order", protect, async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      name: "CareerPilot AI Premium",
+      name: "HireNexa AI Premium",
       description: "Unlimited resume analysis and PDF report download",
       prefill: {
         name: currentUser.name,
@@ -459,11 +821,15 @@ app.post("/api/payment/create-order", protect, async (req, res) => {
 
 app.post("/api/payment/verify", protect, async (req, res) => {
   try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-    } = req.body;
+    if (!process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: "Razorpay secret is missing in .env file.",
+      });
+    }
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+      req.body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({
@@ -798,6 +1164,20 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       "Update your LinkedIn profile with matching skills and project details.",
     ];
 
+    const resumeDna = calculateResumeDna({
+      resumeLower,
+      atsScore,
+      matchedSkills,
+      missingSkills,
+    });
+
+    const mockInterview = createMockInterviewCoach({
+      selectedRole,
+      matchedSkills,
+      missingSkills,
+      atsScore,
+    });
+
     const savedAnalysis = await Analysis.create({
       user: currentUser._id,
       targetRole: selectedRole,
@@ -808,6 +1188,8 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       roadmap,
       interviewQuestions: questions,
       skillGapPlan,
+      resumeDna,
+      mockInterview,
       resumeText,
     });
 
@@ -826,6 +1208,8 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       roadmap,
       interviewQuestions: questions,
       skillGapPlan,
+      resumeDna,
+      mockInterview,
       user: getUserResponse(currentUser),
     });
   } catch (error) {
@@ -869,5 +1253,5 @@ app.get("/api/analysis-history", protect, async (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`CareerPilot AI Backend running on http://localhost:${PORT}`);
+  console.log(`HireNexa AI Backend running on http://localhost:${PORT}`);
 });

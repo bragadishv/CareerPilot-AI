@@ -483,7 +483,7 @@ function App() {
       checkPageSpace();
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
-      const lines = doc.splitTextToSize(text, maxWidth);
+      const lines = doc.splitTextToSize(String(text), maxWidth);
       doc.text(lines, margin, y);
       y += lines.length * 7;
     };
@@ -516,6 +516,24 @@ function App() {
     addSmallText(`ATS Score: ${result.atsScore}%`);
     addSmallText(`Generated Date: ${new Date().toLocaleDateString()}`);
 
+    addSectionTitle("Resume DNA Engine");
+    if (result.resumeDna) {
+      addSmallText(`Profile Strength: ${result.resumeDna.profileStrength}%`);
+      addSmallText(`Keyword Strength: ${result.resumeDna.keywordStrength}%`);
+      addSmallText(`Skills Match: ${result.resumeDna.skillsMatch}%`);
+      addSmallText(`Experience Quality: ${result.resumeDna.experienceQuality}%`);
+      addSmallText(`Project Strength: ${result.resumeDna.projectStrength}%`);
+      addSmallText(
+        `Communication Quality: ${result.resumeDna.communicationQuality}%`
+      );
+      addSmallText(
+        `Recruiter Readiness: ${result.resumeDna.recruiterReadiness}%`
+      );
+      addSmallText(`Summary: ${result.resumeDna.summary}`);
+    } else {
+      addSmallText("Resume DNA data not available.");
+    }
+
     addSectionTitle("Matched Skills");
     addSmallText(
       result.matchedSkills && result.matchedSkills.length > 0
@@ -538,6 +556,26 @@ function App() {
 
     addSectionTitle("Interview Questions");
     addList(result.interviewQuestions);
+
+    addSectionTitle("AI Mock Interview Coach");
+    if (result.mockInterview) {
+      addSmallText("HR Questions");
+      addList(result.mockInterview.hrQuestions);
+
+      addSmallText("Role-Based Questions");
+      addList(result.mockInterview.roleQuestions);
+
+      addSmallText("Technical Questions");
+      addList(result.mockInterview.technicalQuestions);
+
+      addSmallText("Suggested Answer Approach");
+      addList(result.mockInterview.answerApproach);
+
+      addSmallText("Preparation Plan");
+      addList(result.mockInterview.preparationPlan);
+    } else {
+      addSmallText("Mock interview data not available.");
+    }
 
     addSectionTitle("Skill Gap Action Plan");
     addList(result.skillGapPlan);
@@ -616,6 +654,36 @@ function App() {
           </li>
         ))}
       </ul>
+    );
+  };
+
+  const renderDnaScore = (label, value) => {
+    const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+
+    return (
+      <div style={styles.dnaScoreCard}>
+        <div style={styles.dnaScoreTop}>
+          <span style={styles.dnaScoreLabel}>{label}</span>
+          <strong
+            style={{
+              ...styles.dnaScoreValue,
+              color: getScoreColor(safeValue),
+            }}
+          >
+            {safeValue}%
+          </strong>
+        </div>
+
+        <div style={styles.dnaMiniTrack}>
+          <div
+            style={{
+              ...styles.dnaMiniFill,
+              width: `${safeValue}%`,
+              background: getScoreColor(safeValue),
+            }}
+          ></div>
+        </div>
+      </div>
     );
   };
 
@@ -1024,7 +1092,9 @@ function App() {
               <div>
                 <p style={styles.sectionEyebrow}>Resume DNA Summary</p>
                 <h3 style={styles.cardTitle}>Priority Improvement Focus</h3>
-                <p style={styles.cardText}>{getPriorityText(result.atsScore)}</p>
+                <p style={styles.cardText}>
+                  {result.resumeDna?.summary || getPriorityText(result.atsScore)}
+                </p>
               </div>
 
               <div style={styles.dnaGrid}>
@@ -1048,7 +1118,8 @@ function App() {
                       style={{
                         ...styles.dnaFill,
                         width: `${
-                          (result.matchedSkills || []).length > 0
+                          result.resumeDna?.skillsMatch ||
+                          ((result.matchedSkills || []).length > 0
                             ? Math.min(
                                 100,
                                 ((result.matchedSkills || []).length /
@@ -1059,7 +1130,7 @@ function App() {
                                   )) *
                                   100
                               )
-                            : 15
+                            : 15)
                         }%`,
                       }}
                     ></div>
@@ -1074,7 +1145,8 @@ function App() {
                         ...styles.dnaFill,
                         width: `${Math.min(
                           100,
-                          Math.max(20, (result.atsScore || 0) + 10)
+                          result.resumeDna?.recruiterReadiness ||
+                            Math.max(20, (result.atsScore || 0) + 10)
                         )}%`,
                       }}
                     ></div>
@@ -1082,6 +1154,56 @@ function App() {
                 </div>
               </div>
             </div>
+
+            {result.resumeDna && (
+              <div style={styles.dnaEngineSection}>
+                <div style={styles.dnaEngineHeader}>
+                  <div>
+                    <p style={styles.sectionEyebrow}>Resume DNA Engine</p>
+                    <h3 style={styles.dnaEngineTitle}>
+                      Deep Resume Quality Breakdown
+                    </h3>
+                    <p style={styles.dnaEngineText}>
+                      This engine checks how strong your resume looks beyond ATS
+                      keywords — including profile quality, projects, experience,
+                      communication signals, and recruiter readiness.
+                    </p>
+                  </div>
+
+                  <div style={styles.dnaEngineBadge}>
+                    {result.resumeDna.recruiterReadiness}% Ready
+                  </div>
+                </div>
+
+                <div style={styles.dnaScoreGrid}>
+                  {renderDnaScore(
+                    "Profile Strength",
+                    result.resumeDna.profileStrength
+                  )}
+                  {renderDnaScore(
+                    "Keyword Strength",
+                    result.resumeDna.keywordStrength
+                  )}
+                  {renderDnaScore("Skills Match", result.resumeDna.skillsMatch)}
+                  {renderDnaScore(
+                    "Experience Quality",
+                    result.resumeDna.experienceQuality
+                  )}
+                  {renderDnaScore(
+                    "Project Strength",
+                    result.resumeDna.projectStrength
+                  )}
+                  {renderDnaScore(
+                    "Communication Quality",
+                    result.resumeDna.communicationQuality
+                  )}
+                  {renderDnaScore(
+                    "Recruiter Readiness",
+                    result.resumeDna.recruiterReadiness
+                  )}
+                </div>
+              </div>
+            )}
 
             <div style={styles.reportGrid}>
               <div style={styles.resultCard}>
@@ -1115,7 +1237,7 @@ function App() {
               <div style={styles.resultCard}>
                 <div style={styles.cardHeader}>
                   <span style={styles.cardIconInfo}>◎</span>
-                  <h3 style={styles.cardTitle}>Interview Questions</h3>
+                  <h3 style={styles.cardTitle}>Basic Interview Questions</h3>
                 </div>
                 {renderNumberedList(result.interviewQuestions)}
               </div>
@@ -1132,9 +1254,7 @@ function App() {
                       <div key={`${step}-${index}`} style={styles.timelineItem}>
                         <div style={styles.timelineMarker}>{index + 1}</div>
                         <div>
-                          <h4 style={styles.timelineTitle}>
-                            Step {index + 1}
-                          </h4>
+                          <h4 style={styles.timelineTitle}>Step {index + 1}</h4>
                           <p style={styles.timelineText}>{step}</p>
                         </div>
                       </div>
@@ -1171,6 +1291,73 @@ function App() {
               </div>
             </div>
 
+            {result.mockInterview && (
+              <div style={styles.interviewCoachSection}>
+                <div style={styles.interviewCoachHeader}>
+                  <div>
+                    <p style={styles.sectionEyebrow}>
+                      AI Mock Interview Coach
+                    </p>
+                    <h3 style={styles.interviewCoachTitle}>
+                      Practice Plan for{" "}
+                      {roleLabels[targetRole] || "Fresher General"}
+                    </h3>
+                    <p style={styles.interviewCoachText}>
+                      These questions and answer strategies help you prepare like
+                      a real interview session, based on your selected role and
+                      resume gaps.
+                    </p>
+                  </div>
+
+                  <div style={styles.coachBadge}>Interview Ready Mode</div>
+                </div>
+
+                <div style={styles.interviewGrid}>
+                  <div style={styles.interviewPanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>HR</span>
+                      <h3 style={styles.cardTitle}>HR Questions</h3>
+                    </div>
+                    {renderNumberedList(result.mockInterview.hrQuestions)}
+                  </div>
+
+                  <div style={styles.interviewPanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>Role</span>
+                      <h3 style={styles.cardTitle}>Role-Based Questions</h3>
+                    </div>
+                    {renderNumberedList(result.mockInterview.roleQuestions)}
+                  </div>
+
+                  <div style={styles.interviewPanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>Tech</span>
+                      <h3 style={styles.cardTitle}>Technical Questions</h3>
+                    </div>
+                    {renderNumberedList(result.mockInterview.technicalQuestions)}
+                  </div>
+
+                  <div style={styles.interviewPanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconSuccess}>✓</span>
+                      <h3 style={styles.cardTitle}>Suggested Answer Approach</h3>
+                    </div>
+                    {renderBulletList(result.mockInterview.answerApproach)}
+                  </div>
+
+                  <div style={styles.interviewWidePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>Plan</span>
+                      <h3 style={styles.cardTitle}>
+                        5-Step Interview Preparation Plan
+                      </h3>
+                    </div>
+                    {renderNumberedList(result.mockInterview.preparationPlan)}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div style={styles.reportCta}>
               <div>
                 <p style={styles.sectionEyebrow}>Premium Report</p>
@@ -1178,9 +1365,9 @@ function App() {
                   Download your complete HireNexa AI career report
                 </h3>
                 <p style={styles.ctaText}>
-                  Includes ATS score, matched skills, missing skills,
-                  recommendations, roadmap, interview questions, and the resume
-                  text used for analysis.
+                  Includes ATS score, Resume DNA Engine, Mock Interview Coach,
+                  matched skills, missing skills, recommendations, roadmap, and
+                  resume text used for analysis.
                 </p>
               </div>
 
@@ -1249,10 +1436,10 @@ function App() {
                 <p style={styles.price}>₹199</p>
                 <ul style={styles.pricingList}>
                   <li>Unlimited resume analyses</li>
+                  <li>Resume DNA Engine</li>
+                  <li>AI Mock Interview Coach</li>
                   <li>Premium PDF report download</li>
                   <li>Extended analysis history</li>
-                  <li>Interview preparation questions</li>
-                  <li>Career roadmap and action plan</li>
                 </ul>
 
                 <button
@@ -1339,8 +1526,8 @@ function App() {
       </main>
 
       <footer style={styles.footer}>
-        HireNexa AI — AI-powered resume analysis, career planning, and recruiter
-        readiness intelligence.
+        HireNexa AI — AI-powered resume analysis, career planning, mock interview
+        coaching, and recruiter readiness intelligence.
       </footer>
     </div>
   );
@@ -1965,6 +2152,80 @@ const styles = {
     borderRadius: "999px",
     background: "linear-gradient(90deg, #38bdf8, #8b5cf6)",
   },
+  dnaEngineSection: {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(88,28,135,0.18))",
+    border: "1px solid rgba(139,92,246,0.26)",
+    borderRadius: "28px",
+    padding: "30px",
+    boxShadow: "0 25px 75px rgba(0,0,0,0.28)",
+  },
+  dnaEngineHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "18px",
+    marginBottom: "24px",
+    flexWrap: "wrap",
+  },
+  dnaEngineTitle: {
+    margin: "0 0 10px",
+    fontSize: "28px",
+    color: "#ffffff",
+    letterSpacing: "-0.04em",
+  },
+  dnaEngineText: {
+    margin: 0,
+    color: "#cbd5e1",
+    lineHeight: "1.7",
+    maxWidth: "760px",
+  },
+  dnaEngineBadge: {
+    padding: "12px 16px",
+    borderRadius: "999px",
+    background: "linear-gradient(135deg, #8b5cf6, #38bdf8)",
+    color: "#ffffff",
+    fontWeight: "900",
+    whiteSpace: "nowrap",
+    boxShadow: "0 16px 35px rgba(139,92,246,0.28)",
+  },
+  dnaScoreGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "16px",
+  },
+  dnaScoreCard: {
+    background: "rgba(2,6,23,0.48)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "18px",
+    padding: "18px",
+  },
+  dnaScoreTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    alignItems: "center",
+    marginBottom: "12px",
+  },
+  dnaScoreLabel: {
+    color: "#cbd5e1",
+    fontWeight: "800",
+    fontSize: "14px",
+  },
+  dnaScoreValue: {
+    fontSize: "22px",
+    fontWeight: "900",
+  },
+  dnaMiniTrack: {
+    height: "9px",
+    borderRadius: "999px",
+    background: "rgba(148,163,184,0.18)",
+    overflow: "hidden",
+  },
+  dnaMiniFill: {
+    height: "100%",
+    borderRadius: "999px",
+  },
   reportGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(2, 1fr)",
@@ -1993,7 +2254,7 @@ const styles = {
     marginBottom: "16px",
   },
   cardIconSuccess: {
-    width: "30px",
+    minWidth: "30px",
     height: "30px",
     borderRadius: "10px",
     display: "grid",
@@ -2002,9 +2263,10 @@ const styles = {
     color: "#86efac",
     border: "1px solid rgba(34,197,94,0.28)",
     fontWeight: "900",
+    padding: "0 8px",
   },
   cardIconDanger: {
-    width: "30px",
+    minWidth: "30px",
     height: "30px",
     borderRadius: "10px",
     display: "grid",
@@ -2013,9 +2275,10 @@ const styles = {
     color: "#fecaca",
     border: "1px solid rgba(239,68,68,0.28)",
     fontWeight: "900",
+    padding: "0 8px",
   },
   cardIconInfo: {
-    width: "30px",
+    minWidth: "30px",
     height: "30px",
     borderRadius: "10px",
     display: "grid",
@@ -2024,6 +2287,7 @@ const styles = {
     color: "#bae6fd",
     border: "1px solid rgba(56,189,248,0.28)",
     fontWeight: "900",
+    padding: "0 8px",
   },
   cardTitle: {
     fontSize: "20px",
@@ -2126,6 +2390,61 @@ const styles = {
     margin: 0,
     color: "#cbd5e1",
     lineHeight: "1.7",
+  },
+  interviewCoachSection: {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(6,78,59,0.2))",
+    border: "1px solid rgba(16,185,129,0.25)",
+    borderRadius: "28px",
+    padding: "30px",
+    boxShadow: "0 25px 75px rgba(0,0,0,0.28)",
+  },
+  interviewCoachHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "18px",
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+    marginBottom: "24px",
+  },
+  interviewCoachTitle: {
+    margin: "0 0 10px",
+    fontSize: "28px",
+    color: "#ffffff",
+    letterSpacing: "-0.04em",
+  },
+  interviewCoachText: {
+    margin: 0,
+    color: "#cbd5e1",
+    lineHeight: "1.7",
+    maxWidth: "760px",
+  },
+  coachBadge: {
+    padding: "12px 16px",
+    borderRadius: "999px",
+    background: "linear-gradient(135deg, #10b981, #22c55e)",
+    color: "#052e16",
+    fontWeight: "900",
+    whiteSpace: "nowrap",
+    boxShadow: "0 16px 35px rgba(16,185,129,0.22)",
+  },
+  interviewGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "18px",
+  },
+  interviewPanel: {
+    background: "rgba(2,6,23,0.48)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "22px",
+    padding: "24px",
+  },
+  interviewWidePanel: {
+    gridColumn: "1 / -1",
+    background: "rgba(2,6,23,0.48)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "22px",
+    padding: "24px",
   },
   reportCta: {
     background:
