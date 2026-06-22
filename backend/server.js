@@ -205,6 +205,34 @@ const analysisSchema = new mongoose.Schema(
         default: [],
       },
     },
+    jobDescription: {
+      type: String,
+      default: "",
+    },
+    jobMatchScore: {
+      type: Number,
+      default: 0,
+    },
+    jdMatchedKeywords: {
+      type: [String],
+      default: [],
+    },
+    jdMissingKeywords: {
+      type: [String],
+      default: [],
+    },
+    jdGapSummary: {
+      type: String,
+      default: "",
+    },
+    roleFitSummary: {
+      type: String,
+      default: "",
+    },
+    jdFixes: {
+      type: [String],
+      default: [],
+    },
     resumeText: {
       type: String,
       required: true,
@@ -566,11 +594,11 @@ const createMockInterviewCoach = ({
       : "role-specific examples and measurable achievements";
 
   const answerApproach = [
-    `Use the STAR method: Situation, Task, Action, Result.`,
+    "Use the STAR method: Situation, Task, Action, Result.",
     `For ${roleName}, connect every answer to these strengths: ${strongestSkills}.`,
-    `Prepare examples that prove your skills instead of only saying you have them.`,
+    "Prepare examples that prove your skills instead of only saying you have them.",
     `When asked about weakness or gaps, mention that you are actively improving: ${priorityGaps}.`,
-    `End important answers with a measurable outcome, learning, or business impact.`,
+    "End important answers with a measurable outcome, learning, or business impact.",
   ];
 
   const preparationPlan = [
@@ -593,6 +621,226 @@ const createMockInterviewCoach = ({
     technicalQuestions,
     answerApproach,
     preparationPlan,
+  };
+};
+
+const extractJobKeywords = (jobDescription) => {
+  if (!jobDescription || jobDescription.trim() === "") {
+    return [];
+  }
+
+  const jdLower = jobDescription.toLowerCase();
+
+  const priorityKeywords = [
+    "communication",
+    "teamwork",
+    "problem solving",
+    "leadership",
+    "excel",
+    "power bi",
+    "sql",
+    "python",
+    "data analysis",
+    "dashboard",
+    "reporting",
+    "customer service",
+    "technical support",
+    "troubleshooting",
+    "hardware",
+    "software",
+    "networking",
+    "ticketing",
+    "project management",
+    "coordination",
+    "stakeholder",
+    "planning",
+    "tracking",
+    "operations",
+    "crm",
+    "escalation",
+    "presentation",
+    "documentation",
+    "analytics",
+    "microsoft office",
+    "windows",
+    "process improvement",
+    "vendor management",
+    "client handling",
+    "time management",
+  ];
+
+  const matchedPriorityKeywords = priorityKeywords.filter((keyword) =>
+    jdLower.includes(keyword)
+  );
+
+  const stopWords = new Set([
+    "the",
+    "and",
+    "for",
+    "with",
+    "you",
+    "your",
+    "are",
+    "our",
+    "will",
+    "this",
+    "that",
+    "from",
+    "have",
+    "has",
+    "job",
+    "role",
+    "work",
+    "team",
+    "company",
+    "candidate",
+    "candidates",
+    "responsibilities",
+    "responsibility",
+    "required",
+    "requirements",
+    "skills",
+    "skill",
+    "experience",
+    "year",
+    "years",
+    "good",
+    "strong",
+    "basic",
+    "ability",
+    "knowledge",
+    "using",
+    "use",
+    "must",
+    "should",
+    "need",
+    "needs",
+    "preferred",
+    "qualification",
+    "qualifications",
+    "about",
+    "into",
+    "within",
+    "across",
+    "daily",
+    "weekly",
+    "monthly",
+    "including",
+    "etc",
+    "other",
+    "more",
+    "such",
+    "their",
+    "them",
+    "they",
+    "when",
+    "where",
+    "what",
+    "how",
+    "who",
+    "can",
+    "able",
+    "based",
+    "related",
+  ]);
+
+  const words = jdLower
+    .replace(/[^a-z0-9\s+#.]/g, " ")
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 4 && !stopWords.has(word));
+
+  const frequency = {};
+
+  words.forEach((word) => {
+    frequency[word] = (frequency[word] || 0) + 1;
+  });
+
+  const frequentWords = Object.entries(frequency)
+    .sort((a, b) => b[1] - a[1])
+    .map(([word]) => word)
+    .filter((word) => !matchedPriorityKeywords.includes(word))
+    .slice(0, 14);
+
+  return Array.from(new Set([...matchedPriorityKeywords, ...frequentWords]))
+    .slice(0, 24)
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
+};
+
+const analyzeJobDescriptionMatch = ({ resumeLower, jobDescription }) => {
+  if (!jobDescription || jobDescription.trim() === "") {
+    return {
+      jobDescription: "",
+      jobMatchScore: 0,
+      jdMatchedKeywords: [],
+      jdMissingKeywords: [],
+      jdGapSummary:
+        "No job description was added. Paste a job description to compare your resume with a real job opening.",
+      roleFitSummary:
+        "Role fit analysis is not available because no job description was provided.",
+      jdFixes: [
+        "Paste a job description from LinkedIn, Naukri, Indeed, or a company careers page.",
+        "Run the analysis again to get a direct resume vs job match score.",
+      ],
+    };
+  }
+
+  const jdKeywords = extractJobKeywords(jobDescription);
+
+  const jdMatchedKeywords = jdKeywords.filter((keyword) =>
+    resumeLower.includes(keyword.toLowerCase())
+  );
+
+  const jdMissingKeywords = jdKeywords.filter(
+    (keyword) => !resumeLower.includes(keyword.toLowerCase())
+  );
+
+  const jobMatchScore = clampScore(
+    jdKeywords.length > 0
+      ? (jdMatchedKeywords.length / jdKeywords.length) * 100
+      : 0
+  );
+
+  let jdGapSummary =
+    "Your resume needs stronger alignment with this job description. Add important missing keywords and role-specific examples before applying.";
+
+  let roleFitSummary =
+    "Current role fit is low. The resume should be tailored more closely to the job description.";
+
+  if (jobMatchScore >= 75) {
+    jdGapSummary =
+      "Your resume is strongly aligned with this job description. Focus on polishing achievements and adding measurable impact.";
+    roleFitSummary =
+      "Strong role fit. Your resume already contains many of the keywords and signals expected for this job.";
+  } else if (jobMatchScore >= 50) {
+    jdGapSummary =
+      "Your resume is partially aligned with this job description. Add missing keywords, responsibilities, and role-specific achievements.";
+    roleFitSummary =
+      "Moderate role fit. Your resume has some relevant signals but needs stronger job-specific positioning.";
+  }
+
+  const topMissing = jdMissingKeywords.slice(0, 6);
+
+  const jdFixes = [
+    topMissing.length > 0
+      ? `Add these missing JD keywords naturally: ${topMissing.join(", ")}.`
+      : "Your resume already includes the main JD keywords. Improve achievements and clarity.",
+    "Rewrite your professional summary to match the job description.",
+    "Add 2 to 3 bullet points that prove experience related to the job responsibilities.",
+    "Include measurable numbers, results, or impact wherever possible.",
+    "Update your skills section with the most relevant JD keywords.",
+    "Remove generic wording and make your resume specific to this job opening.",
+  ];
+
+  return {
+    jobDescription,
+    jobMatchScore,
+    jdMatchedKeywords,
+    jdMissingKeywords,
+    jdGapSummary,
+    roleFitSummary,
+    jdFixes,
   };
 };
 
@@ -958,7 +1206,7 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       });
     }
 
-    const { resumeText, targetRole } = req.body;
+    const { resumeText, targetRole, jobDescription } = req.body;
 
     if (!resumeText || resumeText.trim() === "") {
       return res.status(400).json({
@@ -1178,6 +1426,11 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       atsScore,
     });
 
+    const jdAnalysis = analyzeJobDescriptionMatch({
+      resumeLower,
+      jobDescription,
+    });
+
     const savedAnalysis = await Analysis.create({
       user: currentUser._id,
       targetRole: selectedRole,
@@ -1190,6 +1443,13 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       skillGapPlan,
       resumeDna,
       mockInterview,
+      jobDescription: jdAnalysis.jobDescription,
+      jobMatchScore: jdAnalysis.jobMatchScore,
+      jdMatchedKeywords: jdAnalysis.jdMatchedKeywords,
+      jdMissingKeywords: jdAnalysis.jdMissingKeywords,
+      jdGapSummary: jdAnalysis.jdGapSummary,
+      roleFitSummary: jdAnalysis.roleFitSummary,
+      jdFixes: jdAnalysis.jdFixes,
       resumeText,
     });
 
@@ -1210,6 +1470,13 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       skillGapPlan,
       resumeDna,
       mockInterview,
+      jobDescription: jdAnalysis.jobDescription,
+      jobMatchScore: jdAnalysis.jobMatchScore,
+      jdMatchedKeywords: jdAnalysis.jdMatchedKeywords,
+      jdMissingKeywords: jdAnalysis.jdMissingKeywords,
+      jdGapSummary: jdAnalysis.jdGapSummary,
+      roleFitSummary: jdAnalysis.roleFitSummary,
+      jdFixes: jdAnalysis.jdFixes,
       user: getUserResponse(currentUser),
     });
   } catch (error) {
@@ -1232,7 +1499,7 @@ app.get("/api/analysis-history", protect, async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .limit(historyLimit)
-      .select("-resumeText -user");
+      .select("-resumeText -user -jobDescription");
 
     res.json({
       success: true,
