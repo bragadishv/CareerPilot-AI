@@ -11,6 +11,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const { generateGeminiMockInterview } = require("./utils/geminiMockInterview");
 
 dotenv.config();
 
@@ -1664,6 +1665,57 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
   }
 });
 
+app.post("/api/gemini/mock-interview", protect, async (req, res) => {
+  try {
+    const {
+      resumeText,
+      targetRole,
+      jobDescription,
+      matchedSkills,
+      missingSkills,
+    } = req.body;
+
+    if (!resumeText || resumeText.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Resume text is required for live AI mock interview.",
+      });
+    }
+
+    const roleLabels = {
+      fresher: "Fresher General",
+      "it-support": "IT Support",
+      "project-coordinator": "Project Coordinator",
+      "customer-support": "Customer Support",
+      "data-analyst": "Data Analyst",
+    };
+
+    const roleName = roleLabels[targetRole] || "Fresher General";
+
+    const aiMockInterview = await generateGeminiMockInterview({
+      resumeText,
+      targetRole,
+      roleName,
+      matchedSkills: Array.isArray(matchedSkills) ? matchedSkills : [],
+      missingSkills: Array.isArray(missingSkills) ? missingSkills : [],
+      jobDescription: jobDescription || "",
+    });
+
+    res.json({
+      success: true,
+      message: "Live Gemini AI mock interview generated successfully.",
+      provider: "Gemini AI",
+      aiMockInterview,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message:
+        "Gemini AI mock interview failed. Existing rule-based mock interview is still available.",
+      error: error.message,
+    });
+  }
+});
 app.get("/api/analysis-history", protect, async (req, res) => {
   try {
     const currentUser = await User.findById(req.user._id);

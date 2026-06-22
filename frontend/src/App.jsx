@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 import DashboardAnalytics from "./components/DashboardAnalytics";
 import AdminDashboard from "./components/AdminDashboard";
 import LandingPagePolish from "./components/LandingPagePolish";
+import LiveAIMockInterview from "./components/LiveAIMockInterview";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -1702,6 +1703,14 @@ function App() {
               </div>
             </div>
 
+            <LiveAIMockInterview
+  token={token}
+  apiBaseUrl={API_BASE_URL}
+  resumeText={resumeText}
+  targetRole={targetRole}
+  jobDescription={jobDescription}
+  result={result}
+/>
             {result.mockInterview && (
               <div style={styles.interviewCoachSection}>
                 <div style={styles.interviewCoachHeader}>
