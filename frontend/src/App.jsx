@@ -5,6 +5,7 @@ import DashboardAnalytics from "./components/DashboardAnalytics";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 import LiveAIMockInterview from "./components/LiveAIMockInterview";
+import AdminDashboard from "./components/AdminDashboard";
 
 function App() {
   const [resumeText, setResumeText] = useState("");
@@ -74,6 +75,10 @@ function App() {
 };
 
   const isPremium = user?.plan === "premium";
+
+  const isAdminUser =
+    user?.isAdmin === true ||
+    String(user?.email || "").toLowerCase().trim() === "bragadishv@gmail.com";
 
   const effectiveTargetRole =
     targetRole === "custom"
@@ -1078,6 +1083,10 @@ function App() {
                 </div>
               )}
             </section>
+
+                        {isAdminUser && (
+              <AdminDashboard token={token} apiBaseUrl={API_BASE_URL} />
+            )}
 
             <DashboardAnalytics
               history={history}
