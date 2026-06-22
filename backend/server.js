@@ -233,6 +233,36 @@ const analysisSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    resumeRewrite: {
+      professionalSummary: {
+        type: String,
+        default: "",
+      },
+      optimizedSkills: {
+        type: [String],
+        default: [],
+      },
+      resumeBullets: {
+        type: [String],
+        default: [],
+      },
+      projectBullets: {
+        type: [String],
+        default: [],
+      },
+      linkedinHeadline: {
+        type: String,
+        default: "",
+      },
+      coverNote: {
+        type: String,
+        default: "",
+      },
+      improvementTips: {
+        type: [String],
+        default: [],
+      },
+    },
     resumeText: {
       type: String,
       required: true,
@@ -844,6 +874,113 @@ const analyzeJobDescriptionMatch = ({ resumeLower, jobDescription }) => {
   };
 };
 
+const createResumeRewrite = ({
+  selectedRole,
+  matchedSkills,
+  missingSkills,
+  jdMatchedKeywords,
+  jdMissingKeywords,
+  atsScore,
+  jobMatchScore,
+  resumeDna,
+}) => {
+  const roleName = roleLabels[selectedRole] || "Fresher General";
+
+  const strongestSkills =
+    matchedSkills.length > 0
+      ? matchedSkills.slice(0, 5)
+      : ["communication", "learning ability", "problem solving"];
+
+  const jdRelevantSkills =
+    jdMatchedKeywords && jdMatchedKeywords.length > 0
+      ? jdMatchedKeywords.slice(0, 6)
+      : strongestSkills;
+
+  const missingFocus =
+    jdMissingKeywords && jdMissingKeywords.length > 0
+      ? jdMissingKeywords.slice(0, 5)
+      : missingSkills.slice(0, 5);
+
+  const combinedSkills = Array.from(
+    new Set([...strongestSkills, ...jdRelevantSkills, ...missingFocus])
+  )
+    .filter(Boolean)
+    .slice(0, 12);
+
+  const readinessText =
+    resumeDna && resumeDna.recruiterReadiness >= 75
+      ? "strong recruiter readiness"
+      : resumeDna && resumeDna.recruiterReadiness >= 50
+      ? "developing recruiter readiness"
+      : "early-stage recruiter readiness";
+
+  const professionalSummary = `Motivated ${roleName} candidate with ${readinessText}, practical exposure to ${strongestSkills.join(
+    ", "
+  )}, and a strong interest in solving real business problems. Skilled in learning quickly, coordinating tasks, communicating clearly, and improving day-to-day execution. Seeking an opportunity to contribute to a growth-focused team while strengthening role-specific skills and delivering measurable value.`;
+
+  const optimizedSkills = combinedSkills;
+
+  const resumeBullets = [
+    `Applied ${strongestSkills[0] || "communication"} and ${
+      strongestSkills[1] || "problem solving"
+    } skills to support daily tasks, improve clarity, and complete assigned responsibilities on time.`,
+    `Coordinated with team members and stakeholders to track progress, document updates, and maintain smooth execution of assigned work.`,
+    `Used ${
+      strongestSkills.includes("excel") ? "Excel" : "structured reporting"
+    } to organize information, prepare updates, and support better decision-making.`,
+    `Improved resume alignment by focusing on role-specific keywords such as ${combinedSkills
+      .slice(0, 5)
+      .join(", ")}.`,
+    `Demonstrated willingness to learn new tools, handle feedback, and build practical skills required for ${roleName} opportunities.`,
+  ];
+
+  const projectBullets = [
+    `Built a role-focused project demonstrating ${combinedSkills
+      .slice(0, 4)
+      .join(", ")} and practical problem-solving ability.`,
+    `Created structured documentation, task tracking, and reporting outputs to show clear understanding of workflow execution.`,
+    `Analyzed project requirements, identified gaps, and improved the final output using feedback and measurable improvements.`,
+    `Presented the project outcome clearly with objective, tools used, responsibilities handled, and learning outcomes.`,
+  ];
+
+  const linkedinHeadline = `${roleName} Aspirant | ${combinedSkills
+    .slice(0, 4)
+    .join(" | ")} | Resume & Interview Ready`;
+
+  const coverNote = `Dear Hiring Team, I am interested in the ${roleName} opportunity. My resume highlights relevant strengths in ${strongestSkills
+    .slice(0, 4)
+    .join(
+      ", "
+    )}, along with a strong willingness to learn, adapt, and contribute to team goals. I am particularly focused on improving ${missingFocus
+    .slice(0, 3)
+    .join(
+      ", "
+    )} to better match the role requirements. I would appreciate the opportunity to discuss how my skills and learning mindset can support your team.`;
+
+  const improvementTips = [
+    atsScore < 50
+      ? "Add more target-role keywords because your ATS score is currently low."
+      : "Keep your role keywords visible in the summary, skills, and experience sections.",
+    jobMatchScore > 0 && jobMatchScore < 50
+      ? "Tailor your resume more closely to the job description before applying."
+      : "Use the JD match section to fine-tune keywords for each job application.",
+    "Add numbers wherever possible, such as volume handled, percentage improved, time saved, or tasks completed.",
+    "Rewrite generic responsibilities into achievement-based bullet points.",
+    "Add at least one project that proves your skills for the selected role.",
+    "Keep your LinkedIn headline aligned with the same role and keywords used in your resume.",
+  ];
+
+  return {
+    professionalSummary,
+    optimizedSkills,
+    resumeBullets,
+    projectBullets,
+    linkedinHeadline,
+    coverNote,
+    improvementTips,
+  };
+};
+
 app.get("/", (req, res) => {
   res.send("HireNexa AI Backend is running");
 });
@@ -1431,6 +1568,17 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       jobDescription,
     });
 
+    const resumeRewrite = createResumeRewrite({
+      selectedRole,
+      matchedSkills,
+      missingSkills,
+      jdMatchedKeywords: jdAnalysis.jdMatchedKeywords,
+      jdMissingKeywords: jdAnalysis.jdMissingKeywords,
+      atsScore,
+      jobMatchScore: jdAnalysis.jobMatchScore,
+      resumeDna,
+    });
+
     const savedAnalysis = await Analysis.create({
       user: currentUser._id,
       targetRole: selectedRole,
@@ -1450,6 +1598,7 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       jdGapSummary: jdAnalysis.jdGapSummary,
       roleFitSummary: jdAnalysis.roleFitSummary,
       jdFixes: jdAnalysis.jdFixes,
+      resumeRewrite,
       resumeText,
     });
 
@@ -1477,6 +1626,7 @@ app.post("/api/analyze-resume", protect, async (req, res) => {
       jdGapSummary: jdAnalysis.jdGapSummary,
       roleFitSummary: jdAnalysis.roleFitSummary,
       jdFixes: jdAnalysis.jdFixes,
+      resumeRewrite,
       user: getUserResponse(currentUser),
     });
   } catch (error) {

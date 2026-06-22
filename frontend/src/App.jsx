@@ -513,6 +513,35 @@ function App() {
     addSmallText(`ATS Score: ${result.atsScore}%`);
     addSmallText(`Generated Date: ${new Date().toLocaleDateString()}`);
 
+    addSectionTitle("AI Resume Rewrite Generator");
+    if (result.resumeRewrite) {
+      addSmallText(`Professional Summary: ${result.resumeRewrite.professionalSummary}`);
+      addSmallText(
+        `Optimized Skills: ${
+          result.resumeRewrite.optimizedSkills?.length
+            ? result.resumeRewrite.optimizedSkills.join(", ")
+            : "No optimized skills available."
+        }`
+      );
+
+      addSectionTitle("Resume Bullet Points");
+      addList(result.resumeRewrite.resumeBullets);
+
+      addSectionTitle("Project Bullet Points");
+      addList(result.resumeRewrite.projectBullets);
+
+      addSectionTitle("LinkedIn Headline");
+      addSmallText(result.resumeRewrite.linkedinHeadline);
+
+      addSectionTitle("Short Cover Note");
+      addSmallText(result.resumeRewrite.coverNote);
+
+      addSectionTitle("Resume Improvement Tips");
+      addList(result.resumeRewrite.improvementTips);
+    } else {
+      addSmallText("Resume rewrite data not available.");
+    }
+
     addSectionTitle("Custom Job Description Match");
     if (result.jobDescription) {
       addSmallText(`Job Match Score: ${result.jobMatchScore}%`);
@@ -763,8 +792,8 @@ function App() {
 
             <p style={styles.heroSubtitle}>
               Optimize your resume for ATS systems, identify missing skills,
-              compare your resume with real job descriptions, generate interview
-              questions, and build a personalized career roadmap.
+              compare your resume with real job descriptions, generate rewritten
+              resume content, and prepare for interviews.
             </p>
 
             <div style={styles.heroActions}>
@@ -772,7 +801,7 @@ function App() {
                 Analyze Resume Free
               </button>
               <button style={styles.heroSecondaryButton} onClick={scrollToAnalyzer}>
-                Compare with Job Description
+                Generate Resume Rewrite
               </button>
             </div>
 
@@ -795,15 +824,15 @@ function App() {
           <div style={styles.heroPanel}>
             <div style={styles.panelTop}>
               <span style={styles.liveDot}></span>
-              Resume + JD Intelligence Scan
+              Resume Rewrite Intelligence
             </div>
 
             <div style={styles.scorePreview}>
               <div>
-                <p style={styles.previewLabel}>Job Match Readiness</p>
+                <p style={styles.previewLabel}>Rewrite Readiness</p>
                 <h2 style={styles.previewScore}>86%</h2>
               </div>
-              <div style={styles.ring}>JD</div>
+              <div style={styles.ring}>AI</div>
             </div>
 
             <div style={styles.previewBars}>
@@ -822,16 +851,16 @@ function App() {
               </div>
 
               <div>
-                <span>Interview Readiness</span>
+                <span>Resume Rewrite</span>
                 <div style={styles.barTrack}>
-                  <div style={{ ...styles.barFill, width: "81%" }}></div>
+                  <div style={{ ...styles.barFill, width: "84%" }}></div>
                 </div>
               </div>
             </div>
 
             <div style={styles.aiInsight}>
-              AI Insight: Paste a job description to compare your resume against
-              a real job opening before applying.
+              AI Insight: Generate a better professional summary, optimized
+              skills, resume bullets, LinkedIn headline, and cover note.
             </div>
           </div>
         </div>
@@ -839,7 +868,7 @@ function App() {
         <div style={styles.featureGrid}>
           <div style={styles.featureCard}>ATS Optimization</div>
           <div style={styles.featureCard}>JD Match</div>
-          <div style={styles.featureCard}>Resume DNA</div>
+          <div style={styles.featureCard}>Resume Rewrite</div>
           <div style={styles.featureCard}>Mock Interviews</div>
         </div>
       </section>
@@ -951,8 +980,8 @@ function App() {
 
               {isPremium && (
                 <div style={styles.premiumNotice}>
-                  Premium active: unlimited resume analysis, PDF download, JD
-                  matching, Resume DNA, and Mock Interview Coach.
+                  Premium active: unlimited resume analysis, JD matching, Resume
+                  DNA, Resume Rewrite, Mock Interview Coach, and PDF download.
                 </div>
               )}
             </section>
@@ -963,7 +992,8 @@ function App() {
                 <h2 style={styles.sectionTitle}>Resume + Job Description Analyzer</h2>
                 <p style={styles.sectionSubtitle}>
                   Upload your resume and optionally paste a real job description
-                  to generate a direct job match report.
+                  to generate ATS, JD Match, Resume DNA, Mock Interview, and AI
+                  Resume Rewrite reports.
                 </p>
               </div>
 
@@ -983,7 +1013,7 @@ function App() {
               <label style={styles.label}>Paste Job Description Optional</label>
               <textarea
                 style={styles.jdTextarea}
-                placeholder="Paste a job description from LinkedIn, Naukri, Indeed, or company careers page. HireNexa AI will compare your resume against this exact job opening."
+                placeholder="Paste a job description from LinkedIn, Naukri, Indeed, or company careers page. HireNexa AI will compare your resume and generate rewrite suggestions."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
               />
@@ -1015,7 +1045,7 @@ function App() {
               />
 
               <button style={styles.primaryButton} onClick={analyzeResume}>
-                {loading ? "Analyzing Resume..." : "Analyze Resume + JD Match"}
+                {loading ? "Analyzing Resume..." : "Analyze Resume + Generate Rewrite"}
               </button>
 
               <button
@@ -1045,9 +1075,9 @@ function App() {
                 <p style={styles.sectionEyebrow}>AI Recruiter Report</p>
                 <h2 style={styles.reportTitle}>Recruiter Readiness Report</h2>
                 <p style={styles.reportSubtitle}>
-                  HireNexa AI analyzed your resume against the selected role and
-                  created a focused action plan to improve ATS matching,
-                  recruiter appeal, and interview readiness.
+                  HireNexa AI analyzed your resume and created a focused action
+                  plan to improve ATS matching, JD alignment, recruiter appeal,
+                  and interview readiness.
                 </p>
 
                 <div
@@ -1113,10 +1143,96 @@ function App() {
               </div>
 
               <div style={styles.metricCard}>
-                <p style={styles.metricLabel}>Report Status</p>
-                <h3 style={styles.metricValue}>Generated</h3>
+                <p style={styles.metricLabel}>Rewrite Status</p>
+                <h3 style={styles.metricValue}>
+                  {result.resumeRewrite ? "Generated" : "Not Generated"}
+                </h3>
               </div>
             </div>
+
+            {result.resumeRewrite && (
+              <div style={styles.rewriteSection}>
+                <div style={styles.rewriteHeader}>
+                  <div>
+                    <p style={styles.sectionEyebrow}>AI Resume Rewrite Generator</p>
+                    <h3 style={styles.rewriteTitle}>Optimized Resume Content</h3>
+                    <p style={styles.rewriteText}>
+                      HireNexa AI generated improved resume content based on your
+                      target role, ATS gaps, JD keywords, and recruiter readiness
+                      signals.
+                    </p>
+                  </div>
+
+                  <div style={styles.rewriteBadge}>Rewrite Ready</div>
+                </div>
+
+                <div style={styles.rewriteGrid}>
+                  <div style={styles.rewriteWidePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>AI</span>
+                      <h3 style={styles.cardTitle}>Improved Professional Summary</h3>
+                    </div>
+                    <p style={styles.rewriteCopyBox}>
+                      {result.resumeRewrite.professionalSummary}
+                    </p>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconSuccess}>Skill</span>
+                      <h3 style={styles.cardTitle}>Optimized Skills Section</h3>
+                    </div>
+                    <div style={styles.skillChipWrap}>
+                      {renderSkillChips(result.resumeRewrite.optimizedSkills, "matched")}
+                    </div>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>LI</span>
+                      <h3 style={styles.cardTitle}>LinkedIn Headline</h3>
+                    </div>
+                    <p style={styles.rewriteCopyBox}>
+                      {result.resumeRewrite.linkedinHeadline}
+                    </p>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>CV</span>
+                      <h3 style={styles.cardTitle}>Short Cover Note</h3>
+                    </div>
+                    <p style={styles.rewriteCopyBox}>
+                      {result.resumeRewrite.coverNote}
+                    </p>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconSuccess}>✓</span>
+                      <h3 style={styles.cardTitle}>Resume Bullet Points</h3>
+                    </div>
+                    {renderNumberedList(result.resumeRewrite.resumeBullets)}
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconSuccess}>P</span>
+                      <h3 style={styles.cardTitle}>Project Bullet Points</h3>
+                    </div>
+                    {renderNumberedList(result.resumeRewrite.projectBullets)}
+                  </div>
+
+                  <div style={styles.rewriteWidePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>Tip</span>
+                      <h3 style={styles.cardTitle}>Resume Improvement Tips</h3>
+                    </div>
+                    {renderBulletList(result.resumeRewrite.improvementTips)}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {result.jobDescription && (
               <div style={styles.jdSection}>
@@ -1466,8 +1582,8 @@ function App() {
                   Download your complete HireNexa AI career report
                 </h3>
                 <p style={styles.ctaText}>
-                  Includes ATS score, Custom JD Match, Resume DNA Engine, Mock
-                  Interview Coach, matched skills, missing skills,
+                  Includes ATS score, JD Match, AI Resume Rewrite, Resume DNA,
+                  Mock Interview Coach, matched skills, missing skills,
                   recommendations, roadmap, and resume text used for analysis.
                 </p>
               </div>
@@ -1538,9 +1654,9 @@ function App() {
                 <ul style={styles.pricingList}>
                   <li>Unlimited resume analyses</li>
                   <li>Custom Job Description Match</li>
+                  <li>AI Resume Rewrite Generator</li>
                   <li>Resume DNA Engine</li>
                   <li>AI Mock Interview Coach</li>
-                  <li>Premium PDF report download</li>
                 </ul>
 
                 <button
@@ -1633,8 +1749,8 @@ function App() {
 
       <footer style={styles.footer}>
         HireNexa AI — AI-powered resume analysis, job description matching,
-        career planning, mock interview coaching, and recruiter readiness
-        intelligence.
+        AI resume rewrite, career planning, mock interview coaching, and
+        recruiter readiness intelligence.
       </footer>
     </div>
   );
@@ -2237,6 +2353,70 @@ const styles = {
     margin: 0,
     fontSize: "23px",
     letterSpacing: "-0.03em",
+  },
+  rewriteSection: {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(79,70,229,0.18), rgba(6,182,212,0.1))",
+    border: "1px solid rgba(129,140,248,0.3)",
+    borderRadius: "28px",
+    padding: "30px",
+    boxShadow: "0 25px 75px rgba(0,0,0,0.28)",
+  },
+  rewriteHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "18px",
+    marginBottom: "24px",
+    flexWrap: "wrap",
+  },
+  rewriteTitle: {
+    margin: "0 0 10px",
+    fontSize: "28px",
+    color: "#ffffff",
+    letterSpacing: "-0.04em",
+  },
+  rewriteText: {
+    margin: 0,
+    color: "#cbd5e1",
+    lineHeight: "1.7",
+    maxWidth: "760px",
+  },
+  rewriteBadge: {
+    padding: "12px 16px",
+    borderRadius: "999px",
+    background: "linear-gradient(135deg, #818cf8, #38bdf8)",
+    color: "#ffffff",
+    fontWeight: "900",
+    whiteSpace: "nowrap",
+    boxShadow: "0 16px 35px rgba(129,140,248,0.25)",
+  },
+  rewriteGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "18px",
+  },
+  rewritePanel: {
+    background: "rgba(2,6,23,0.48)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "22px",
+    padding: "24px",
+  },
+  rewriteWidePanel: {
+    gridColumn: "1 / -1",
+    background: "rgba(2,6,23,0.48)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "22px",
+    padding: "24px",
+  },
+  rewriteCopyBox: {
+    margin: 0,
+    color: "#dbeafe",
+    lineHeight: "1.8",
+    background: "rgba(15,23,42,0.58)",
+    border: "1px solid rgba(148,163,184,0.16)",
+    borderRadius: "16px",
+    padding: "16px",
   },
   jdSection: {
     background:
