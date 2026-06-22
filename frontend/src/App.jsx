@@ -28,7 +28,10 @@ function App() {
 
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("careerpilot_user");
-    if (!savedUser) return null;
+
+    if (!savedUser) {
+      return null;
+    }
 
     try {
       return JSON.parse(savedUser);
@@ -54,7 +57,10 @@ function App() {
   }, [token]);
 
   const saveUserData = (updatedUser) => {
-    if (!updatedUser) return;
+    if (!updatedUser) {
+      return;
+    }
+
     setUser(updatedUser);
     localStorage.setItem("careerpilot_user", JSON.stringify(updatedUser));
   };
@@ -85,7 +91,9 @@ function App() {
 
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
@@ -128,20 +136,27 @@ function App() {
   };
 
   const fetchAnalysisHistory = async (authToken = token) => {
-    if (!authToken) return;
+    if (!authToken) {
+      return;
+    }
 
     try {
       setHistoryLoading(true);
 
       const response = await fetch(`${API_BASE_URL}/api/analysis-history`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
       });
 
       const data = await response.json();
 
       if (data.success) {
         setHistory(data.history || []);
-        if (data.user) saveUserData(data.user);
+
+        if (data.user) {
+          saveUserData(data.user);
+        }
       }
     } catch (error) {
       console.log("Failed to fetch analysis history");
@@ -163,8 +178,13 @@ function App() {
       script.id = "razorpay-checkout-script";
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
 
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
+      script.onload = () => {
+        resolve(true);
+      };
+
+      script.onerror = () => {
+        resolve(false);
+      };
 
       document.body.appendChild(script);
     });
@@ -195,7 +215,9 @@ function App() {
         `${API_BASE_URL}/api/payment/create-order`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -224,7 +246,9 @@ function App() {
         description: orderData.description,
         order_id: orderData.orderId,
         prefill: orderData.prefill,
-        theme: { color: "#2563eb" },
+        theme: {
+          color: "#2563eb",
+        },
         handler: async function (paymentResponse) {
           try {
             const verifyResponse = await fetch(
@@ -297,7 +321,9 @@ function App() {
 
       const response = await fetch(`${API_BASE_URL}/api/upload-resume`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -338,15 +364,26 @@ function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ resumeText, targetRole }),
+        body: JSON.stringify({
+          resumeText,
+          targetRole,
+        }),
       });
 
       const data = await response.json();
       setResult(data);
 
-      if (data.user) saveUserData(data.user);
-      if (data.success) fetchAnalysisHistory();
-      if (data.limitReached) alert(data.message);
+      if (data.user) {
+        saveUserData(data.user);
+      }
+
+      if (data.success) {
+        fetchAnalysisHistory();
+      }
+
+      if (data.limitReached) {
+        alert(data.message);
+      }
     } catch (error) {
       setResult({
         success: false,
@@ -363,10 +400,40 @@ function App() {
     return "#ef4444";
   };
 
+  const getScoreBackground = (score) => {
+    if (score >= 75) return "rgba(34,197,94,0.14)";
+    if (score >= 50) return "rgba(245,158,11,0.14)";
+    return "rgba(239,68,68,0.14)";
+  };
+
+  const getScoreBorder = (score) => {
+    if (score >= 75) return "rgba(34,197,94,0.35)";
+    if (score >= 50) return "rgba(245,158,11,0.35)";
+    return "rgba(239,68,68,0.35)";
+  };
+
   const getScoreMessage = (score) => {
     if (score >= 75) return "Recruiter-ready resume match";
     if (score >= 50) return "Good profile, needs stronger keywords";
     return "Needs stronger role-specific optimization";
+  };
+
+  const getReadinessLabel = (score) => {
+    if (score >= 75) return "High Recruiter Readiness";
+    if (score >= 50) return "Medium Recruiter Readiness";
+    return "Low Recruiter Readiness";
+  };
+
+  const getPriorityText = (score) => {
+    if (score >= 75) {
+      return "Your resume is strong. Focus on polishing achievements, role-specific impact, and interview readiness.";
+    }
+
+    if (score >= 50) {
+      return "Your resume has a good base. Improve keywords, measurable achievements, and role alignment.";
+    }
+
+    return "Your resume needs stronger positioning. Add relevant skills, projects, achievements, and role-specific keywords.";
   };
 
   const formatDate = (dateValue) => {
@@ -479,6 +546,77 @@ function App() {
     addSmallText(resumeText);
 
     doc.save("HireNexa-AI-Resume-Report.pdf");
+  };
+
+  const renderSkillChips = (items, type = "matched") => {
+    if (!items || items.length === 0) {
+      return (
+        <span
+          style={{
+            ...styles.skillChip,
+            background: "rgba(148,163,184,0.12)",
+            color: "#cbd5e1",
+            borderColor: "rgba(148,163,184,0.2)",
+          }}
+        >
+          No data available
+        </span>
+      );
+    }
+
+    return items.map((item, index) => (
+      <span
+        key={`${item}-${index}`}
+        style={{
+          ...styles.skillChip,
+          background:
+            type === "matched"
+              ? "rgba(34,197,94,0.12)"
+              : "rgba(239,68,68,0.12)",
+          color: type === "matched" ? "#bbf7d0" : "#fecaca",
+          borderColor:
+            type === "matched"
+              ? "rgba(34,197,94,0.28)"
+              : "rgba(239,68,68,0.28)",
+        }}
+      >
+        {item}
+      </span>
+    ));
+  };
+
+  const renderNumberedList = (items, emptyMessage = "No data available.") => {
+    if (!items || items.length === 0) {
+      return <p style={styles.cardText}>{emptyMessage}</p>;
+    }
+
+    return (
+      <ol style={styles.premiumList}>
+        {items.map((item, index) => (
+          <li key={`${item}-${index}`} style={styles.premiumListItem}>
+            <span style={styles.listNumber}>{index + 1}</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ol>
+    );
+  };
+
+  const renderBulletList = (items, emptyMessage = "No data available.") => {
+    if (!items || items.length === 0) {
+      return <p style={styles.cardText}>{emptyMessage}</p>;
+    }
+
+    return (
+      <ul style={styles.premiumBulletList}>
+        {items.map((item, index) => (
+          <li key={`${item}-${index}`} style={styles.premiumBulletItem}>
+            <span style={styles.bulletDot}></span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    );
   };
 
   return (
@@ -801,79 +939,261 @@ function App() {
         )}
 
         {result && result.success && (
-          <section style={styles.resultSection}>
-            <div style={styles.scoreCard}>
-              <p style={styles.scoreLabel}>ATS Score</p>
-              <h2
-                style={{
-                  ...styles.scoreValue,
-                  color: getScoreColor(result.atsScore),
-                }}
-              >
-                {result.atsScore}%
-              </h2>
-              <p style={styles.scoreMessage}>
-                {getScoreMessage(result.atsScore)}
-              </p>
-              <p style={styles.roleText}>
-                Target Role: {roleLabels[targetRole] || "Fresher General"}
-              </p>
+          <section style={styles.reportSection}>
+            <div style={styles.reportHero}>
+              <div>
+                <p style={styles.sectionEyebrow}>AI Recruiter Report</p>
+                <h2 style={styles.reportTitle}>Recruiter Readiness Report</h2>
+                <p style={styles.reportSubtitle}>
+                  HireNexa AI analyzed your resume against the selected role and
+                  created a focused action plan to improve ATS matching,
+                  recruiter appeal, and interview readiness.
+                </p>
+
+                <div
+                  style={{
+                    ...styles.readinessBadge,
+                    background: getScoreBackground(result.atsScore),
+                    borderColor: getScoreBorder(result.atsScore),
+                    color: getScoreColor(result.atsScore),
+                  }}
+                >
+                  {getReadinessLabel(result.atsScore)}
+                </div>
+              </div>
+
+              <div style={styles.scoreRingPanel}>
+                <div
+                  style={{
+                    ...styles.reportRing,
+                    background: `conic-gradient(${getScoreColor(
+                      result.atsScore
+                    )} 0deg ${Math.min(
+                      360,
+                      (result.atsScore / 100) * 360
+                    )}deg, rgba(148,163,184,0.18) ${Math.min(
+                      360,
+                      (result.atsScore / 100) * 360
+                    )}deg 360deg)`,
+                  }}
+                >
+                  <div style={styles.reportRingInner}>
+                    <span
+                      style={{
+                        ...styles.reportScoreValue,
+                        color: getScoreColor(result.atsScore),
+                      }}
+                    >
+                      {result.atsScore}%
+                    </span>
+                    <small style={styles.reportScoreLabel}>ATS Score</small>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div style={styles.resultGrid}>
+            <div style={styles.reportMetricGrid}>
+              <div style={styles.metricCard}>
+                <p style={styles.metricLabel}>Target Role</p>
+                <h3 style={styles.metricValue}>
+                  {roleLabels[targetRole] || "Fresher General"}
+                </h3>
+              </div>
+
+              <div style={styles.metricCard}>
+                <p style={styles.metricLabel}>Matched Skills</p>
+                <h3 style={styles.metricValue}>
+                  {(result.matchedSkills || []).length}
+                </h3>
+              </div>
+
+              <div style={styles.metricCard}>
+                <p style={styles.metricLabel}>Missing Skills</p>
+                <h3 style={styles.metricValue}>
+                  {(result.missingSkills || []).length}
+                </h3>
+              </div>
+
+              <div style={styles.metricCard}>
+                <p style={styles.metricLabel}>Report Status</p>
+                <h3 style={styles.metricValue}>Generated</h3>
+              </div>
+            </div>
+
+            <div style={styles.resumeDnaCard}>
+              <div>
+                <p style={styles.sectionEyebrow}>Resume DNA Summary</p>
+                <h3 style={styles.cardTitle}>Priority Improvement Focus</h3>
+                <p style={styles.cardText}>{getPriorityText(result.atsScore)}</p>
+              </div>
+
+              <div style={styles.dnaGrid}>
+                <div style={styles.dnaItem}>
+                  <span style={styles.dnaLabel}>ATS</span>
+                  <div style={styles.dnaTrack}>
+                    <div
+                      style={{
+                        ...styles.dnaFill,
+                        width: `${Math.min(100, result.atsScore || 0)}%`,
+                        background: getScoreColor(result.atsScore),
+                      }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div style={styles.dnaItem}>
+                  <span style={styles.dnaLabel}>Skills</span>
+                  <div style={styles.dnaTrack}>
+                    <div
+                      style={{
+                        ...styles.dnaFill,
+                        width: `${
+                          (result.matchedSkills || []).length > 0
+                            ? Math.min(
+                                100,
+                                ((result.matchedSkills || []).length /
+                                  Math.max(
+                                    1,
+                                    (result.matchedSkills || []).length +
+                                      (result.missingSkills || []).length
+                                  )) *
+                                  100
+                              )
+                            : 15
+                        }%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div style={styles.dnaItem}>
+                  <span style={styles.dnaLabel}>Readiness</span>
+                  <div style={styles.dnaTrack}>
+                    <div
+                      style={{
+                        ...styles.dnaFill,
+                        width: `${Math.min(
+                          100,
+                          Math.max(20, (result.atsScore || 0) + 10)
+                        )}%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.reportGrid}>
               <div style={styles.resultCard}>
-                <h3 style={styles.cardTitle}>Matched Skills</h3>
-                <p style={styles.cardText}>
-                  {result.matchedSkills && result.matchedSkills.length > 0
-                    ? result.matchedSkills.join(", ")
-                    : "No matched skills found"}
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardIconSuccess}>✓</span>
+                  <h3 style={styles.cardTitle}>Matched Skills</h3>
+                </div>
+                <div style={styles.skillChipWrap}>
+                  {renderSkillChips(result.matchedSkills, "matched")}
+                </div>
+              </div>
+
+              <div style={styles.resultCard}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardIconDanger}>!</span>
+                  <h3 style={styles.cardTitle}>Missing Skills</h3>
+                </div>
+                <div style={styles.skillChipWrap}>
+                  {renderSkillChips(result.missingSkills, "missing")}
+                </div>
+              </div>
+
+              <div style={styles.resultCard}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardIconInfo}>↗</span>
+                  <h3 style={styles.cardTitle}>Priority Fixes</h3>
+                </div>
+                {renderBulletList(result.suggestions)}
+              </div>
+
+              <div style={styles.resultCard}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardIconInfo}>◎</span>
+                  <h3 style={styles.cardTitle}>Interview Questions</h3>
+                </div>
+                {renderNumberedList(result.interviewQuestions)}
+              </div>
+
+              <div style={styles.timelineCard}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardIconInfo}>⌁</span>
+                  <h3 style={styles.cardTitle}>Career Roadmap Timeline</h3>
+                </div>
+
+                {result.roadmap && result.roadmap.length > 0 ? (
+                  <div style={styles.timeline}>
+                    {result.roadmap.map((step, index) => (
+                      <div key={`${step}-${index}`} style={styles.timelineItem}>
+                        <div style={styles.timelineMarker}>{index + 1}</div>
+                        <div>
+                          <h4 style={styles.timelineTitle}>
+                            Step {index + 1}
+                          </h4>
+                          <p style={styles.timelineText}>{step}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={styles.cardText}>No roadmap available.</p>
+                )}
+              </div>
+
+              <div style={styles.timelineCard}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardIconInfo}>⚡</span>
+                  <h3 style={styles.cardTitle}>Skill Gap Action Plan</h3>
+                </div>
+
+                {result.skillGapPlan && result.skillGapPlan.length > 0 ? (
+                  <div style={styles.timeline}>
+                    {result.skillGapPlan.map((step, index) => (
+                      <div key={`${step}-${index}`} style={styles.timelineItem}>
+                        <div style={styles.timelineMarker}>{index + 1}</div>
+                        <div>
+                          <h4 style={styles.timelineTitle}>
+                            Action {index + 1}
+                          </h4>
+                          <p style={styles.timelineText}>{step}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={styles.cardText}>No action plan available.</p>
+                )}
+              </div>
+            </div>
+
+            <div style={styles.reportCta}>
+              <div>
+                <p style={styles.sectionEyebrow}>Premium Report</p>
+                <h3 style={styles.ctaTitle}>
+                  Download your complete HireNexa AI career report
+                </h3>
+                <p style={styles.ctaText}>
+                  Includes ATS score, matched skills, missing skills,
+                  recommendations, roadmap, interview questions, and the resume
+                  text used for analysis.
                 </p>
               </div>
 
-              <div style={styles.resultCard}>
-                <h3 style={styles.cardTitle}>Missing Skills</h3>
-                <p style={styles.cardText}>
-                  {result.missingSkills && result.missingSkills.length > 0
-                    ? result.missingSkills.join(", ")
-                    : "No missing skills"}
-                </p>
-              </div>
-
-              <div style={styles.resultCard}>
-                <h3 style={styles.cardTitle}>Suggestions</h3>
-                <ul style={styles.list}>
-                  {(result.suggestions || []).map((item, index) => (
-                    <li key={index}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div style={styles.resultCard}>
-                <h3 style={styles.cardTitle}>Career Roadmap</h3>
-                <ol style={styles.list}>
-                  {(result.roadmap || []).map((step, index) => (
-                    <li key={index}>{step}</li>
-                  ))}
-                </ol>
-              </div>
-
-              <div style={styles.resultCard}>
-                <h3 style={styles.cardTitle}>Interview Questions</h3>
-                <ol style={styles.list}>
-                  {(result.interviewQuestions || []).map((question, index) => (
-                    <li key={index}>{question}</li>
-                  ))}
-                </ol>
-              </div>
-
-              <div style={styles.resultCard}>
-                <h3 style={styles.cardTitle}>Skill Gap Action Plan</h3>
-                <ol style={styles.list}>
-                  {(result.skillGapPlan || []).map((step, index) => (
-                    <li key={index}>{step}</li>
-                  ))}
-                </ol>
-              </div>
+              <button
+                style={{
+                  ...styles.ctaButton,
+                  opacity: isPremium ? 1 : 0.65,
+                  cursor: isPremium ? "pointer" : "not-allowed",
+                }}
+                onClick={downloadPDFReport}
+              >
+                {isPremium ? "Download PDF Report" : "Upgrade to Download"}
+              </button>
             </div>
           </section>
         )}
@@ -1514,39 +1834,138 @@ const styles = {
     marginBottom: "5px",
     fontWeight: "900",
   },
-  resultSection: {
-    marginTop: "30px",
+  reportSection: {
+    marginTop: "34px",
+    display: "grid",
+    gap: "24px",
   },
-  scoreCard: {
-    background: "rgba(15,23,42,0.84)",
-    borderRadius: "26px",
-    padding: "34px",
+  reportHero: {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(30,41,59,0.72))",
+    borderRadius: "30px",
+    padding: "36px",
     border: "1px solid rgba(148,163,184,0.22)",
     boxShadow: "0 25px 75px rgba(0,0,0,0.32)",
-    textAlign: "center",
-    marginBottom: "25px",
+    display: "grid",
+    gridTemplateColumns: "1fr 260px",
+    gap: "28px",
+    alignItems: "center",
   },
-  scoreLabel: {
-    fontSize: "16px",
-    color: "#94a3b8",
-    margin: 0,
-  },
-  scoreValue: {
-    fontSize: "66px",
-    margin: "10px 0",
-    letterSpacing: "-0.06em",
-  },
-  scoreMessage: {
-    fontSize: "18px",
-    fontWeight: "900",
-    margin: "0 0 8px",
+  reportTitle: {
+    fontSize: "38px",
+    margin: "0 0 12px",
     color: "#ffffff",
+    letterSpacing: "-0.05em",
   },
-  roleText: {
+  reportSubtitle: {
+    fontSize: "16px",
+    lineHeight: "1.8",
+    color: "#cbd5e1",
+    maxWidth: "720px",
+    margin: "0 0 18px",
+  },
+  readinessBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "10px 14px",
+    borderRadius: "999px",
+    fontWeight: "900",
+    border: "1px solid",
+    fontSize: "14px",
+  },
+  scoreRingPanel: {
+    display: "flex",
+    justifyContent: "center",
+  },
+  reportRing: {
+    width: "210px",
+    height: "210px",
+    borderRadius: "50%",
+    padding: "16px",
+    boxShadow: "0 24px 60px rgba(0,0,0,0.28)",
+  },
+  reportRingInner: {
+    width: "100%",
+    height: "100%",
+    borderRadius: "50%",
+    background: "#020617",
+    display: "grid",
+    placeItems: "center",
+    alignContent: "center",
+    border: "1px solid rgba(148,163,184,0.18)",
+  },
+  reportScoreValue: {
+    fontSize: "52px",
+    fontWeight: "900",
+    letterSpacing: "-0.06em",
+    lineHeight: 1,
+  },
+  reportScoreLabel: {
     color: "#94a3b8",
-    margin: 0,
+    fontSize: "14px",
+    marginTop: "8px",
+    fontWeight: "800",
   },
-  resultGrid: {
+  reportMetricGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "16px",
+  },
+  metricCard: {
+    background: "rgba(15,23,42,0.84)",
+    borderRadius: "22px",
+    padding: "22px",
+    border: "1px solid rgba(148,163,184,0.2)",
+    boxShadow: "0 18px 55px rgba(0,0,0,0.22)",
+  },
+  metricLabel: {
+    color: "#94a3b8",
+    margin: "0 0 8px",
+    fontSize: "13px",
+    fontWeight: "800",
+  },
+  metricValue: {
+    color: "#ffffff",
+    margin: 0,
+    fontSize: "23px",
+    letterSpacing: "-0.03em",
+  },
+  resumeDnaCard: {
+    background:
+      "linear-gradient(135deg, rgba(6,182,212,0.12), rgba(139,92,246,0.1))",
+    borderRadius: "26px",
+    padding: "30px",
+    border: "1px solid rgba(56,189,248,0.22)",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "28px",
+    alignItems: "center",
+  },
+  dnaGrid: {
+    display: "grid",
+    gap: "18px",
+  },
+  dnaItem: {
+    display: "grid",
+    gap: "8px",
+  },
+  dnaLabel: {
+    color: "#cbd5e1",
+    fontWeight: "800",
+    fontSize: "14px",
+  },
+  dnaTrack: {
+    height: "11px",
+    borderRadius: "999px",
+    background: "rgba(148,163,184,0.18)",
+    overflow: "hidden",
+  },
+  dnaFill: {
+    height: "100%",
+    borderRadius: "999px",
+    background: "linear-gradient(90deg, #38bdf8, #8b5cf6)",
+  },
+  reportGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(2, 1fr)",
     gap: "20px",
@@ -1559,20 +1978,186 @@ const styles = {
     boxShadow: "0 18px 55px rgba(0,0,0,0.26)",
     lineHeight: "1.7",
   },
+  timelineCard: {
+    background: "rgba(15,23,42,0.84)",
+    padding: "26px",
+    borderRadius: "22px",
+    border: "1px solid rgba(148,163,184,0.2)",
+    boxShadow: "0 18px 55px rgba(0,0,0,0.26)",
+    lineHeight: "1.7",
+  },
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "16px",
+  },
+  cardIconSuccess: {
+    width: "30px",
+    height: "30px",
+    borderRadius: "10px",
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(34,197,94,0.14)",
+    color: "#86efac",
+    border: "1px solid rgba(34,197,94,0.28)",
+    fontWeight: "900",
+  },
+  cardIconDanger: {
+    width: "30px",
+    height: "30px",
+    borderRadius: "10px",
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(239,68,68,0.14)",
+    color: "#fecaca",
+    border: "1px solid rgba(239,68,68,0.28)",
+    fontWeight: "900",
+  },
+  cardIconInfo: {
+    width: "30px",
+    height: "30px",
+    borderRadius: "10px",
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(56,189,248,0.14)",
+    color: "#bae6fd",
+    border: "1px solid rgba(56,189,248,0.28)",
+    fontWeight: "900",
+  },
   cardTitle: {
     fontSize: "20px",
-    marginTop: 0,
-    marginBottom: "12px",
+    margin: 0,
     color: "#ffffff",
   },
   cardText: {
     color: "#cbd5e1",
     margin: 0,
+    lineHeight: "1.8",
   },
-  list: {
-    paddingLeft: "20px",
+  skillChipWrap: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+  skillChip: {
+    padding: "9px 12px",
+    borderRadius: "999px",
+    border: "1px solid",
+    fontSize: "14px",
+    fontWeight: "800",
+    lineHeight: 1,
+  },
+  premiumBulletList: {
+    display: "grid",
+    gap: "12px",
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+  },
+  premiumBulletItem: {
+    display: "grid",
+    gridTemplateColumns: "16px 1fr",
+    gap: "10px",
+    color: "#cbd5e1",
+    lineHeight: "1.7",
+  },
+  bulletDot: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "999px",
+    background: "#38bdf8",
+    marginTop: "9px",
+    boxShadow: "0 0 14px rgba(56,189,248,0.8)",
+  },
+  premiumList: {
+    display: "grid",
+    gap: "14px",
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+  },
+  premiumListItem: {
+    display: "grid",
+    gridTemplateColumns: "34px 1fr",
+    gap: "12px",
+    color: "#cbd5e1",
+    lineHeight: "1.7",
+  },
+  listNumber: {
+    width: "30px",
+    height: "30px",
+    borderRadius: "10px",
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(56,189,248,0.14)",
+    color: "#bae6fd",
+    border: "1px solid rgba(56,189,248,0.28)",
+    fontWeight: "900",
+    fontSize: "13px",
+  },
+  timeline: {
+    display: "grid",
+    gap: "18px",
+  },
+  timelineItem: {
+    display: "grid",
+    gridTemplateColumns: "38px 1fr",
+    gap: "14px",
+    position: "relative",
+  },
+  timelineMarker: {
+    width: "36px",
+    height: "36px",
+    borderRadius: "12px",
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, #38bdf8, #8b5cf6)",
+    color: "#ffffff",
+    fontWeight: "900",
+    boxShadow: "0 14px 30px rgba(59,130,246,0.22)",
+  },
+  timelineTitle: {
+    margin: "0 0 4px",
+    color: "#ffffff",
+    fontSize: "15px",
+  },
+  timelineText: {
     margin: 0,
     color: "#cbd5e1",
+    lineHeight: "1.7",
+  },
+  reportCta: {
+    background:
+      "linear-gradient(135deg, rgba(250,204,21,0.14), rgba(249,115,22,0.08))",
+    borderRadius: "26px",
+    padding: "30px",
+    border: "1px solid rgba(250,204,21,0.28)",
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: "24px",
+    alignItems: "center",
+  },
+  ctaTitle: {
+    margin: "0 0 8px",
+    color: "#ffffff",
+    fontSize: "24px",
+    letterSpacing: "-0.03em",
+  },
+  ctaText: {
+    margin: 0,
+    color: "#cbd5e1",
+    lineHeight: "1.7",
+  },
+  ctaButton: {
+    border: "none",
+    borderRadius: "16px",
+    padding: "16px 22px",
+    background: "linear-gradient(135deg, #facc15, #f97316)",
+    color: "#111827",
+    fontWeight: "900",
+    fontSize: "16px",
+    whiteSpace: "nowrap",
   },
   errorCard: {
     background: "rgba(127,29,29,0.28)",
