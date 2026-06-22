@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
 import DashboardAnalytics from "./components/DashboardAnalytics";
 import AdminDashboard from "./components/AdminDashboard";
+import LandingPagePolish from "./components/LandingPagePolish";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -446,6 +447,11 @@ function App() {
 
   const scrollToAnalyzer = () => {
     const element = document.getElementById("resume-analyzer");
+    if (element) element.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToPrimaryAction = () => {
+    const element = document.getElementById(user ? "resume-analyzer" : "auth-section");
     if (element) element.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -937,9 +943,15 @@ function App() {
         </div>
       </section>
 
+      <LandingPagePolish
+        onStart={scrollToPrimaryAction}
+        isPremium={isPremium}
+        user={user}
+      />
+
       <main style={styles.main}>
         {!user && (
-          <section style={styles.authCard}>
+          <section id="auth-section" style={styles.authCard}>
             <div style={styles.sectionHeader}>
               <p style={styles.sectionEyebrow}>Secure Access</p>
               <h2 style={styles.sectionTitle}>
