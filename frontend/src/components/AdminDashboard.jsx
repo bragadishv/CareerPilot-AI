@@ -1,19 +1,27 @@
 import { useEffect, useState } from "react";
 
-function AdminDashboard({ token, apiBaseUrl, roleLabels }) {
-  const [adminData, setAdminData] = useState(null);
+function AdminDashboard({ token, apiBaseUrl }) {
+  const [overview, setOverview] = useState(null);
+  const [latestUsers, setLatestUsers] = useState([]);
+  const [latestAnalyses, setLatestAnalyses] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState("");
 
+  const roleLabels = {
+    fresher: "Fresher General",
+    "it-support": "IT Support",
+    "project-coordinator": "Project Coordinator",
+    "customer-support": "Customer Support",
+    "data-analyst": "Data Analyst",
+  };
+
   const fetchAdminOverview = async () => {
-    if (!token) {
+    if (!token || !apiBaseUrl) {
       return;
     }
 
     try {
       setLoading(true);
-      setError("");
 
       const response = await fetch(`${apiBaseUrl}/api/admin/overview`, {
         headers: {
@@ -24,13 +32,15 @@ function AdminDashboard({ token, apiBaseUrl, roleLabels }) {
       const data = await response.json();
 
       if (!data.success) {
-        setError(data.message || "Failed to load admin dashboard.");
+        console.log(data.message || "Admin overview failed");
         return;
       }
 
-      setAdminData(data);
-    } catch (err) {
-      setError("Failed to connect to admin API. Please check backend is running.");
+      setOverview(data.overview || null);
+      setLatestUsers(data.latestUsers || []);
+      setLatestAnalyses(data.latestAnalyses || []);
+    } catch (error) {
+      console.log("Admin dashboard fetch failed", error);
     } finally {
       setLoading(false);
     }
@@ -38,33 +48,28 @@ function AdminDashboard({ token, apiBaseUrl, roleLabels }) {
 
   useEffect(() => {
     fetchAdminOverview();
-  }, [token]);
+  }, [token, apiBaseUrl]);
 
   const updateUserPlan = async (userId, plan) => {
-    if (!userId || !plan) {
-      return;
-    }
-
-    const confirmMessage =
-      plan === "premium"
-        ? "Make this user Premium?"
-        : "Move this user back to Free plan?";
-
-    if (!window.confirm(confirmMessage)) {
+    if (!token || !apiBaseUrl || !userId) {
+      alert("Missing admin access details.");
       return;
     }
 
     try {
-      setActionLoading(`${userId}-${plan}`);
+      setActionLoading(userId);
 
-      const response = await fetch(`${apiBaseUrl}/api/admin/users/${userId}/plan`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ plan }),
-      });
+      const response = await fetch(
+        `${apiBaseUrl}/api/admin/users/${userId}/plan`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ plan }),
+        }
+      );
 
       const data = await response.json();
 
@@ -73,38 +78,42 @@ function AdminDashboard({ token, apiBaseUrl, roleLabels }) {
         return;
       }
 
-      alert(data.message || "User plan updated successfully.");
+      alert(data.message || "User plan updated.");
       fetchAdminOverview();
-    } catch (err) {
-      alert("Failed to update user plan. Please try again.");
+    } catch (error) {
+      alert("Failed to update user plan.");
     } finally {
       setActionLoading("");
     }
   };
 
   const getScoreColor = (score) => {
-    if (score >= 75) return "#22c55e";
-    if (score >= 50) return "#f59e0b";
+    const value = Number(score) || 0;
+
+    if (value >= 75) return "#22c55e";
+    if (value >= 50) return "#f59e0b";
     return "#ef4444";
   };
 
   const formatDate = (dateValue) => {
     if (!dateValue) return "No date";
-    return new Date(dateValue).toLocaleString();
-  };
 
-  const overview = adminData?.overview || {};
-  const latestUsers = adminData?.latestUsers || [];
-  const latestAnalyses = adminData?.latestAnalyses || [];
+    try {
+      return new Date(dateValue).toLocaleString();
+    } catch (error) {
+      return "No date";
+    }
+  };
 
   return (
     <section style={styles.adminSection}>
       <div style={styles.adminHeader}>
         <div>
-          <p style={styles.sectionEyebrow}>Admin Dashboard</p>
-          <h2 style={styles.sectionTitle}>HireNexa AI Control Center</h2>
-          <p style={styles.sectionSubtitle}>
-            Track users, premium plans, resume analyses, ATS performance, and latest platform activity.
+          <p style={styles.eyebrow}>Admin Dashboard</p>
+          <h2 style={styles.title}>HireNexa AI Control Center</h2>
+          <p style={styles.subtitle}>
+            Manage users, premium access, app usage, and latest resume analysis
+            reports from one admin view.
           </p>
         </div>
 
@@ -113,226 +122,204 @@ function AdminDashboard({ token, apiBaseUrl, roleLabels }) {
         </button>
       </div>
 
-      {error && (
-        <div style={styles.errorBox}>
-          <strong>Admin Error:</strong> {error}
+      <div style={styles.metricGrid}>
+        <div style={styles.metricCard}>
+          <p style={styles.metricLabel}>Total Users</p>
+          <h3 style={styles.metricValue}>{overview?.totalUsers || 0}</h3>
         </div>
-      )}
 
-      {!error && (
-        <>
-          <div style={styles.metricGrid}>
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Total Users</p>
-              <h3 style={styles.metricValue}>{overview.totalUsers || 0}</h3>
-              <span style={styles.metricNote}>Registered accounts</span>
-            </div>
+        <div style={styles.metricCard}>
+          <p style={styles.metricLabel}>Premium Users</p>
+          <h3 style={styles.metricValue}>{overview?.premiumUsers || 0}</h3>
+        </div>
 
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Premium Users</p>
-              <h3 style={styles.metricValueGold}>{overview.premiumUsers || 0}</h3>
-              <span style={styles.metricNote}>Paid or activated users</span>
-            </div>
+        <div style={styles.metricCard}>
+          <p style={styles.metricLabel}>Free Users</p>
+          <h3 style={styles.metricValue}>{overview?.freeUsers || 0}</h3>
+        </div>
 
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Free Users</p>
-              <h3 style={styles.metricValue}>{overview.freeUsers || 0}</h3>
-              <span style={styles.metricNote}>Free plan accounts</span>
-            </div>
+        <div style={styles.metricCard}>
+          <p style={styles.metricLabel}>Total Analyses</p>
+          <h3 style={styles.metricValue}>{overview?.totalAnalyses || 0}</h3>
+        </div>
+      </div>
 
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Total Analyses</p>
-              <h3 style={styles.metricValue}>{overview.totalAnalyses || 0}</h3>
-              <span style={styles.metricNote}>Resume reports generated</span>
-            </div>
+      <div style={styles.metricGrid}>
+        <div style={styles.metricCard}>
+          <p style={styles.metricLabel}>Average ATS</p>
+          <h3
+            style={{
+              ...styles.metricValue,
+              color: getScoreColor(overview?.averageAts || 0),
+            }}
+          >
+            {overview?.averageAts || 0}%
+          </h3>
+        </div>
+
+        <div style={styles.metricCard}>
+          <p style={styles.metricLabel}>Average JD Match</p>
+          <h3
+            style={{
+              ...styles.metricValue,
+              color: getScoreColor(overview?.averageJd || 0),
+            }}
+          >
+            {overview?.averageJd || 0}%
+          </h3>
+        </div>
+
+        <div style={styles.metricCard}>
+          <p style={styles.metricLabel}>Best ATS</p>
+          <h3
+            style={{
+              ...styles.metricValue,
+              color: getScoreColor(overview?.bestAts || 0),
+            }}
+          >
+            {overview?.bestAts || 0}%
+          </h3>
+        </div>
+
+        <div style={styles.metricCard}>
+          <p style={styles.metricLabel}>Best JD Match</p>
+          <h3
+            style={{
+              ...styles.metricValue,
+              color: getScoreColor(overview?.bestJd || 0),
+            }}
+          >
+            {overview?.bestJd || 0}%
+          </h3>
+        </div>
+      </div>
+
+      <div style={styles.adminGrid}>
+        <div style={styles.panel}>
+          <div style={styles.panelHeader}>
+            <p style={styles.eyebrow}>Latest Users</p>
+            <h3 style={styles.panelTitle}>User Management</h3>
           </div>
 
-          <div style={styles.metricGrid}>
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Average ATS</p>
-              <h3
-                style={{
-                  ...styles.metricValue,
-                  color: getScoreColor(Number(overview.averageAts) || 0),
-                }}
-              >
-                {overview.averageAts || 0}%
-              </h3>
-              <span style={styles.metricNote}>Across all reports</span>
-            </div>
+          {latestUsers.length === 0 ? (
+            <p style={styles.emptyText}>No users found.</p>
+          ) : (
+            <div style={styles.list}>
+              {latestUsers.map((item) => (
+                <div key={item._id} style={styles.userItem}>
+                  <div>
+                    <h4 style={styles.itemTitle}>{item.name}</h4>
+                    <p style={styles.itemText}>{item.email}</p>
+                    <p style={styles.itemText}>
+                      Plan: <strong>{item.plan}</strong> | Used:{" "}
+                      {item.analysisCount || 0}
+                    </p>
+                    <p style={styles.itemDate}>{formatDate(item.createdAt)}</p>
+                  </div>
 
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Average JD Match</p>
-              <h3
-                style={{
-                  ...styles.metricValue,
-                  color: getScoreColor(Number(overview.averageJd) || 0),
-                }}
-              >
-                {overview.averageJd || 0}%
-              </h3>
-              <span style={styles.metricNote}>Across JD reports</span>
-            </div>
+                  <div style={styles.actionRow}>
+                    <button
+                      style={{
+                        ...styles.smallButton,
+                        background:
+                          item.plan === "premium"
+                            ? "#64748b"
+                            : "linear-gradient(135deg, #facc15, #f97316)",
+                        color: item.plan === "premium" ? "#e2e8f0" : "#111827",
+                        cursor:
+                          item.plan === "premium" ? "not-allowed" : "pointer",
+                      }}
+                      disabled={item.plan === "premium" || actionLoading === item._id}
+                      onClick={() => updateUserPlan(item._id, "premium")}
+                    >
+                      {actionLoading === item._id ? "Updating..." : "Make Premium"}
+                    </button>
 
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Best ATS</p>
-              <h3
-                style={{
-                  ...styles.metricValue,
-                  color: getScoreColor(Number(overview.bestAts) || 0),
-                }}
-              >
-                {overview.bestAts || 0}%
-              </h3>
-              <span style={styles.metricNote}>Highest ATS score</span>
+                    <button
+                      style={{
+                        ...styles.smallButton,
+                        background:
+                          item.plan === "free"
+                            ? "#64748b"
+                            : "rgba(239,68,68,0.18)",
+                        color: item.plan === "free" ? "#e2e8f0" : "#fecaca",
+                        border: "1px solid rgba(239,68,68,0.3)",
+                        cursor: item.plan === "free" ? "not-allowed" : "pointer",
+                      }}
+                      disabled={item.plan === "free" || actionLoading === item._id}
+                      onClick={() => updateUserPlan(item._id, "free")}
+                    >
+                      Move Free
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
+          )}
+        </div>
 
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Best JD Match</p>
-              <h3
-                style={{
-                  ...styles.metricValue,
-                  color: getScoreColor(Number(overview.bestJd) || 0),
-                }}
-              >
-                {overview.bestJd || 0}%
-              </h3>
-              <span style={styles.metricNote}>Highest JD match score</span>
-            </div>
+        <div style={styles.panel}>
+          <div style={styles.panelHeader}>
+            <p style={styles.eyebrow}>Latest Analysis Reports</p>
+            <h3 style={styles.panelTitle}>App Usage</h3>
           </div>
 
-          <div style={styles.adminGrid}>
-            <div style={styles.adminPanel}>
-              <div style={styles.panelHeader}>
-                <div>
-                  <p style={styles.sectionEyebrow}>User Management</p>
-                  <h3 style={styles.panelTitle}>Latest Users</h3>
+          {latestAnalyses.length === 0 ? (
+            <p style={styles.emptyText}>No analysis reports found.</p>
+          ) : (
+            <div style={styles.list}>
+              {latestAnalyses.map((item) => (
+                <div key={item._id} style={styles.analysisItem}>
+                  <div>
+                    <h4 style={styles.itemTitle}>
+                      {roleLabels[item.targetRole] || item.targetRole}
+                    </h4>
+                    <p style={styles.itemText}>
+                      User: {item.user?.name || "Unknown"} —{" "}
+                      {item.user?.email || "No email"}
+                    </p>
+                    <p style={styles.itemDate}>{formatDate(item.createdAt)}</p>
+                  </div>
+
+                  <div style={styles.scoreRow}>
+                    <span
+                      style={{
+                        ...styles.scoreBadge,
+                        color: getScoreColor(item.atsScore),
+                        borderColor: `${getScoreColor(item.atsScore)}55`,
+                        background: `${getScoreColor(item.atsScore)}18`,
+                      }}
+                    >
+                      ATS {item.atsScore || 0}%
+                    </span>
+
+                    <span
+                      style={{
+                        ...styles.scoreBadge,
+                        color: getScoreColor(item.jobMatchScore || 0),
+                        borderColor: `${getScoreColor(item.jobMatchScore || 0)}55`,
+                        background: `${getScoreColor(item.jobMatchScore || 0)}18`,
+                      }}
+                    >
+                      JD {item.jobMatchScore || 0}%
+                    </span>
+                  </div>
                 </div>
-              </div>
-
-              {latestUsers.length === 0 ? (
-                <p style={styles.emptyText}>No users found.</p>
-              ) : (
-                <div style={styles.listWrap}>
-                  {latestUsers.map((item) => {
-                    const isPremiumUser = item.plan === "premium";
-                    const nextPlan = isPremiumUser ? "free" : "premium";
-                    const buttonKey = `${item._id}-${nextPlan}`;
-
-                    return (
-                      <div key={item._id} style={styles.userRow}>
-                        <div style={styles.userInfo}>
-                          <h4 style={styles.userName}>{item.name}</h4>
-                          <p style={styles.userEmail}>{item.email}</p>
-                          <p style={styles.userMeta}>
-                            Joined: {formatDate(item.createdAt)} | Analyses: {item.analysisCount || 0}
-                          </p>
-                        </div>
-
-                        <div style={styles.userActions}>
-                          <span
-                            style={{
-                              ...styles.planPill,
-                              background: isPremiumUser
-                                ? "rgba(250,204,21,0.16)"
-                                : "rgba(59,130,246,0.14)",
-                              color: isPremiumUser ? "#fde68a" : "#bfdbfe",
-                              borderColor: isPremiumUser
-                                ? "rgba(250,204,21,0.35)"
-                                : "rgba(59,130,246,0.28)",
-                            }}
-                          >
-                            {isPremiumUser ? "Premium" : "Free"}
-                          </span>
-
-                          <button
-                            style={isPremiumUser ? styles.freeButton : styles.premiumButton}
-                            onClick={() => updateUserPlan(item._id, nextPlan)}
-                          >
-                            {actionLoading === buttonKey
-                              ? "Updating..."
-                              : isPremiumUser
-                              ? "Move Free"
-                              : "Make Premium"}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              ))}
             </div>
-
-            <div style={styles.adminPanel}>
-              <div style={styles.panelHeader}>
-                <div>
-                  <p style={styles.sectionEyebrow}>App Usage</p>
-                  <h3 style={styles.panelTitle}>Latest Analysis Reports</h3>
-                </div>
-              </div>
-
-              {latestAnalyses.length === 0 ? (
-                <p style={styles.emptyText}>No analyses found.</p>
-              ) : (
-                <div style={styles.listWrap}>
-                  {latestAnalyses.map((item) => {
-                    const roleName = roleLabels[item.targetRole] || item.targetRole;
-                    const atsScore = Number(item.atsScore) || 0;
-                    const jdScore = Number(item.jobMatchScore) || 0;
-
-                    return (
-                      <div key={item._id} style={styles.analysisRow}>
-                        <div>
-                          <h4 style={styles.userName}>{roleName}</h4>
-                          <p style={styles.userEmail}>
-                            {item.user?.name || "Unknown User"} • {item.user?.email || "No email"}
-                          </p>
-                          <p style={styles.userMeta}>{formatDate(item.createdAt)}</p>
-                        </div>
-
-                        <div style={styles.scorePills}>
-                          <span
-                            style={{
-                              ...styles.scorePill,
-                              color: getScoreColor(atsScore),
-                              borderColor: `${getScoreColor(atsScore)}55`,
-                              background: `${getScoreColor(atsScore)}18`,
-                            }}
-                          >
-                            ATS {atsScore}%
-                          </span>
-
-                          <span
-                            style={{
-                              ...styles.scorePill,
-                              color: jdScore > 0 ? getScoreColor(jdScore) : "#94a3b8",
-                              borderColor: jdScore > 0 ? `${getScoreColor(jdScore)}55` : "#64748b55",
-                              background: jdScore > 0 ? `${getScoreColor(jdScore)}18` : "#64748b18",
-                            }}
-                          >
-                            JD {jdScore > 0 ? `${jdScore}%` : "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+          )}
+        </div>
+      </div>
     </section>
   );
 }
 
 const styles = {
   adminSection: {
-    background:
-      "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(88,28,135,0.18), rgba(234,88,12,0.1))",
+    background: "rgba(15,23,42,0.88)",
     padding: "36px",
     borderRadius: "26px",
-    border: "1px solid rgba(251,146,60,0.28)",
+    border: "1px solid rgba(250,204,21,0.28)",
     boxShadow: "0 25px 75px rgba(0,0,0,0.32)",
     marginBottom: "30px",
   },
@@ -344,21 +331,21 @@ const styles = {
     flexWrap: "wrap",
     marginBottom: "24px",
   },
-  sectionEyebrow: {
-    color: "#38bdf8",
+  eyebrow: {
+    color: "#facc15",
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: "0.12em",
     fontSize: "12px",
     margin: "0 0 8px",
   },
-  sectionTitle: {
+  title: {
     fontSize: "32px",
     margin: "0 0 10px",
     color: "#ffffff",
     letterSpacing: "-0.04em",
   },
-  sectionSubtitle: {
+  subtitle: {
     fontSize: "16px",
     color: "#94a3b8",
     margin: 0,
@@ -366,29 +353,19 @@ const styles = {
     maxWidth: "780px",
   },
   refreshButton: {
-    padding: "13px 18px",
+    padding: "12px 16px",
+    borderRadius: "999px",
     border: "none",
-    borderRadius: "14px",
-    background: "linear-gradient(135deg, #f97316, #facc15)",
+    background: "linear-gradient(135deg, #facc15, #f97316)",
     color: "#111827",
-    fontSize: "15px",
-    cursor: "pointer",
     fontWeight: "900",
-    whiteSpace: "nowrap",
-  },
-  errorBox: {
-    background: "rgba(127,29,29,0.28)",
-    border: "1px solid rgba(248,113,113,0.35)",
-    color: "#fecaca",
-    padding: "16px",
-    borderRadius: "16px",
-    lineHeight: "1.7",
+    cursor: "pointer",
   },
   metricGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(4, 1fr)",
     gap: "16px",
-    marginBottom: "20px",
+    marginBottom: "16px",
   },
   metricCard: {
     background: "rgba(2,6,23,0.48)",
@@ -404,138 +381,96 @@ const styles = {
   },
   metricValue: {
     color: "#ffffff",
-    margin: "0 0 6px",
+    margin: 0,
     fontSize: "32px",
     fontWeight: "900",
     letterSpacing: "-0.05em",
-  },
-  metricValueGold: {
-    color: "#facc15",
-    margin: "0 0 6px",
-    fontSize: "32px",
-    fontWeight: "900",
-    letterSpacing: "-0.05em",
-  },
-  metricNote: {
-    color: "#64748b",
-    fontSize: "13px",
-    fontWeight: "700",
   },
   adminGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "20px",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "16px",
+    marginTop: "20px",
   },
-  adminPanel: {
-    background: "rgba(2,6,23,0.5)",
+  panel: {
+    background: "rgba(2,6,23,0.48)",
     border: "1px solid rgba(148,163,184,0.18)",
-    borderRadius: "22px",
-    padding: "24px",
+    borderRadius: "20px",
+    padding: "22px",
   },
   panelHeader: {
-    marginBottom: "18px",
+    marginBottom: "16px",
   },
   panelTitle: {
-    margin: 0,
     color: "#ffffff",
-    fontSize: "23px",
-    letterSpacing: "-0.03em",
+    margin: 0,
+    fontSize: "22px",
   },
   emptyText: {
     color: "#94a3b8",
     margin: 0,
-    lineHeight: "1.7",
   },
-  listWrap: {
+  list: {
     display: "grid",
     gap: "12px",
   },
-  userRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "16px",
+  userItem: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: "14px",
     alignItems: "center",
-    padding: "16px",
-    borderRadius: "16px",
-    background: "rgba(15,23,42,0.6)",
+    background: "rgba(15,23,42,0.58)",
     border: "1px solid rgba(148,163,184,0.12)",
-    flexWrap: "wrap",
+    borderRadius: "16px",
+    padding: "16px",
   },
-  analysisRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "16px",
+  analysisItem: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: "14px",
     alignItems: "center",
-    padding: "16px",
-    borderRadius: "16px",
-    background: "rgba(15,23,42,0.6)",
+    background: "rgba(15,23,42,0.58)",
     border: "1px solid rgba(148,163,184,0.12)",
-    flexWrap: "wrap",
+    borderRadius: "16px",
+    padding: "16px",
   },
-  userInfo: {
-    minWidth: "220px",
-  },
-  userName: {
+  itemTitle: {
     margin: "0 0 5px",
     color: "#ffffff",
     fontSize: "16px",
   },
-  userEmail: {
-    margin: "0 0 5px",
+  itemText: {
+    margin: "3px 0",
     color: "#cbd5e1",
     fontSize: "13px",
-    wordBreak: "break-word",
   },
-  userMeta: {
-    margin: 0,
+  itemDate: {
+    margin: "5px 0 0",
     color: "#94a3b8",
     fontSize: "12px",
-    lineHeight: "1.5",
   },
-  userActions: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    flexWrap: "wrap",
-  },
-  planPill: {
-    padding: "8px 10px",
-    borderRadius: "999px",
-    border: "1px solid",
-    fontSize: "12px",
-    fontWeight: "900",
-  },
-  premiumButton: {
-    border: "none",
-    borderRadius: "12px",
-    background: "linear-gradient(135deg, #facc15, #f97316)",
-    color: "#111827",
-    padding: "10px 12px",
-    cursor: "pointer",
-    fontWeight: "900",
-    fontSize: "13px",
-  },
-  freeButton: {
-    border: "1px solid rgba(148,163,184,0.25)",
-    borderRadius: "12px",
-    background: "rgba(15,23,42,0.7)",
-    color: "#cbd5e1",
-    padding: "10px 12px",
-    cursor: "pointer",
-    fontWeight: "900",
-    fontSize: "13px",
-  },
-  scorePills: {
-    display: "flex",
+  actionRow: {
+    display: "grid",
     gap: "8px",
-    flexWrap: "wrap",
   },
-  scorePill: {
+  smallButton: {
+    padding: "9px 12px",
+    borderRadius: "10px",
+    border: "none",
+    fontWeight: "900",
+    fontSize: "12px",
+  },
+  scoreRow: {
+    display: "grid",
+    gap: "8px",
+  },
+  scoreBadge: {
     padding: "8px 10px",
     borderRadius: "999px",
     border: "1px solid",
     fontSize: "13px",
     fontWeight: "900",
+    textAlign: "center",
   },
 };
 

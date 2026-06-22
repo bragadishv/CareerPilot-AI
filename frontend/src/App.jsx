@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
 import DashboardAnalytics from "./components/DashboardAnalytics";
+import AdminDashboard from "./components/AdminDashboard";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -51,6 +52,10 @@ function App() {
   };
 
   const isPremium = user?.plan === "premium";
+
+  const isAdminUser =
+    user?.isAdmin === true ||
+    String(user?.email || "").toLowerCase().trim() === "bragadishv@gmail.com";
 
   useEffect(() => {
     if (token) {
@@ -1045,6 +1050,10 @@ function App() {
                 </div>
               )}
             </section>
+
+            {isAdminUser && (
+              <AdminDashboard token={token} apiBaseUrl={API_BASE_URL} />
+            )}
 
             <DashboardAnalytics
               history={history}
