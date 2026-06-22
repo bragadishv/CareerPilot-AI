@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
+import DashboardAnalytics from "./components/DashboardAnalytics";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -1044,6 +1045,12 @@ function App() {
                 </div>
               )}
             </section>
+
+            <DashboardAnalytics
+              history={history}
+              user={user}
+              roleLabels={roleLabels}
+            />
 
             <section id="resume-analyzer" style={styles.formCard}>
               <div style={styles.sectionHeader}>
