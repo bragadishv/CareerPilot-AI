@@ -281,12 +281,20 @@ const createToken = (userId) => {
   });
 };
 
+const isAdminEmail = (email) => {
+  const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
+  const currentEmail = (email || "").toLowerCase().trim();
+
+  return Boolean(adminEmail && currentEmail && adminEmail === currentEmail);
+};
+
 const getUserResponse = (user) => {
   return {
     id: user._id,
     name: user.name,
     email: user.email,
     plan: user.plan || "free",
+    isAdmin: isAdminEmail(user.email),
     analysisCount: user.analysisCount || 0,
     analysisLimit: user.plan === "premium" ? "unlimited" : FREE_ANALYSIS_LIMIT,
     remainingAnalyses:
@@ -332,6 +340,24 @@ const protect = async (req, res, next) => {
       message: "Invalid or expired token. Please login again.",
     });
   }
+};
+
+const adminOnly = (req, res, next) => {
+  if (!process.env.ADMIN_EMAIL) {
+    return res.status(500).json({
+      success: false,
+      message: "ADMIN_EMAIL is missing in backend .env file.",
+    });
+  }
+
+  if (!req.user || !isAdminEmail(req.user.email)) {
+    return res.status(403).json({
+      success: false,
+      message: "Admin access denied.",
+    });
+  }
+
+  next();
 };
 
 const verifyRazorpaySignature = ({
@@ -1662,6 +1688,172 @@ app.get("/api/analysis-history", protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch analysis history.",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/api/admin/overview", protect, adminOnly, async (req, res) => {
+  try {
+    const [
+      totalUsers,
+      premiumUsers,
+      freeUsers,
+      totalAnalyses,
+      latestUsers,
+      latestAnalyses,
+      scoreStats,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ plan: "premium" }),
+      User.countDocuments({ plan: "free" }),
+      Analysis.countDocuments(),
+      User.find()
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .select("name email plan analysisCount premiumActivatedAt createdAt"),
+      Analysis.find()
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .populate("user", "name email plan")
+        .select(
+          "user targetRole atsScore jobMatchScore matchedSkills missingSkills createdAt"
+        ),
+      Analysis.aggregate([
+        {
+          $group: {
+            _id: null,
+            averageAts: { $avg: "$atsScore" },
+            averageJd: { $avg: "$jobMatchScore" },
+            bestAts: { $max: "$atsScore" },
+            bestJd: { $max: "$jobMatchScore" },
+          },
+        },
+      ]),
+    ]);
+
+    const stats = scoreStats[0] || {
+      averageAts: 0,
+      averageJd: 0,
+      bestAts: 0,
+      bestJd: 0,
+    };
+
+    res.json({
+      success: true,
+      message: "Admin overview fetched successfully.",
+      overview: {
+        totalUsers,
+        premiumUsers,
+        freeUsers,
+        totalAnalyses,
+        averageAts: Math.round(stats.averageAts || 0),
+        averageJd: Math.round(stats.averageJd || 0),
+        bestAts: Math.round(stats.bestAts || 0),
+        bestJd: Math.round(stats.bestJd || 0),
+      },
+      latestUsers,
+      latestAnalyses,
+      admin: getUserResponse(req.user),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch admin overview.",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/api/admin/users", protect, adminOnly, async (req, res) => {
+  try {
+    const users = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .select(
+        "name email plan analysisCount analysisLimit premiumActivatedAt createdAt"
+      );
+
+    res.json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch users.",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/api/admin/analyses", protect, adminOnly, async (req, res) => {
+  try {
+    const analyses = await Analysis.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate("user", "name email plan")
+      .select(
+        "user targetRole atsScore jobMatchScore matchedSkills missingSkills suggestions createdAt"
+      );
+
+    res.json({
+      success: true,
+      count: analyses.length,
+      analyses,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch analyses.",
+      error: error.message,
+    });
+  }
+});
+
+app.patch("/api/admin/users/:userId/plan", protect, adminOnly, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { plan } = req.body;
+
+    if (!["free", "premium"].includes(plan)) {
+      return res.status(400).json({
+        success: false,
+        message: "Plan must be either free or premium.",
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    user.plan = plan;
+
+    if (plan === "premium") {
+      user.analysisLimit = 999999;
+      user.premiumActivatedAt = user.premiumActivatedAt || new Date();
+    } else {
+      user.analysisLimit = FREE_ANALYSIS_LIMIT;
+      user.premiumActivatedAt = null;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `User plan updated to ${plan}.`,
+      user: getUserResponse(user),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update user plan.",
       error: error.message,
     });
   }
