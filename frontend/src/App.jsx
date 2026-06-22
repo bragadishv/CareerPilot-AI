@@ -443,6 +443,59 @@ function App() {
     if (element) element.scrollIntoView({ behavior: "smooth" });
   };
 
+  const maskSensitiveText = (text) => {
+    if (!text) {
+      return "";
+    }
+
+    return String(text)
+      .replace(
+        /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,
+        "[EMAIL HIDDEN]"
+      )
+      .replace(/(\+?\d[\d\s().-]{7,}\d)/g, (match) => {
+        const digitsOnly = match.replace(/\D/g, "");
+
+        if (digitsOnly.length >= 10) {
+          return "[PHONE HIDDEN]";
+        }
+
+        return match;
+      });
+  };
+
+  const copyToClipboard = async (label, content) => {
+    const text = Array.isArray(content)
+      ? content.join("\n")
+      : String(content || "");
+
+    if (!text.trim()) {
+      alert(`${label} is not available to copy.`);
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      }
+
+      alert(`${label} copied successfully.`);
+    } catch (error) {
+      alert(`Could not copy ${label}. Please select and copy manually.`);
+    }
+  };
+
   const downloadPDFReport = () => {
     if (!result || !result.success) {
       alert("Please analyze a resume first.");
@@ -515,7 +568,9 @@ function App() {
 
     addSectionTitle("AI Resume Rewrite Generator");
     if (result.resumeRewrite) {
-      addSmallText(`Professional Summary: ${result.resumeRewrite.professionalSummary}`);
+      addSmallText(
+        `Professional Summary: ${result.resumeRewrite.professionalSummary}`
+      );
       addSmallText(
         `Optimized Skills: ${
           result.resumeRewrite.optimizedSkills?.length
@@ -633,8 +688,11 @@ function App() {
     addSectionTitle("Skill Gap Action Plan");
     addList(result.skillGapPlan);
 
-    addSectionTitle("Resume Text Used For Analysis");
-    addSmallText(resumeText);
+    addSectionTitle("Resume Text Used For Analysis Privacy Safe");
+    addSmallText(
+      "Privacy note: phone numbers and email addresses found inside the resume text are hidden in this PDF report."
+    );
+    addSmallText(maskSensitiveText(resumeText));
 
     doc.save("HireNexa-AI-Resume-Report.pdf");
   };
@@ -981,7 +1039,8 @@ function App() {
               {isPremium && (
                 <div style={styles.premiumNotice}>
                   Premium active: unlimited resume analysis, JD matching, Resume
-                  DNA, Resume Rewrite, Mock Interview Coach, and PDF download.
+                  DNA, Resume Rewrite, Mock Interview Coach, and privacy-safe PDF
+                  download.
                 </div>
               )}
             </section>
@@ -989,7 +1048,9 @@ function App() {
             <section id="resume-analyzer" style={styles.formCard}>
               <div style={styles.sectionHeader}>
                 <p style={styles.sectionEyebrow}>AI Resume Engine</p>
-                <h2 style={styles.sectionTitle}>Resume + Job Description Analyzer</h2>
+                <h2 style={styles.sectionTitle}>
+                  Resume + Job Description Analyzer
+                </h2>
                 <p style={styles.sectionSubtitle}>
                   Upload your resume and optionally paste a real job description
                   to generate ATS, JD Match, Resume DNA, Mock Interview, and AI
@@ -1045,7 +1106,9 @@ function App() {
               />
 
               <button style={styles.primaryButton} onClick={analyzeResume}>
-                {loading ? "Analyzing Resume..." : "Analyze Resume + Generate Rewrite"}
+                {loading
+                  ? "Analyzing Resume..."
+                  : "Analyze Resume + Generate Rewrite"}
               </button>
 
               <button
@@ -1062,7 +1125,7 @@ function App() {
                 }}
                 onClick={downloadPDFReport}
               >
-                Download Premium PDF Report {isPremium ? "" : "(Premium)"}
+                Download Privacy-Safe PDF Report {isPremium ? "" : "(Premium)"}
               </button>
             </section>
           </>
@@ -1154,12 +1217,15 @@ function App() {
               <div style={styles.rewriteSection}>
                 <div style={styles.rewriteHeader}>
                   <div>
-                    <p style={styles.sectionEyebrow}>AI Resume Rewrite Generator</p>
+                    <p style={styles.sectionEyebrow}>
+                      AI Resume Rewrite Generator
+                    </p>
                     <h3 style={styles.rewriteTitle}>Optimized Resume Content</h3>
                     <p style={styles.rewriteText}>
                       HireNexa AI generated improved resume content based on your
                       target role, ATS gaps, JD keywords, and recruiter readiness
-                      signals.
+                      signals. Use the copy buttons to quickly update your resume
+                      or LinkedIn profile.
                     </p>
                   </div>
 
@@ -1170,11 +1236,26 @@ function App() {
                   <div style={styles.rewriteWidePanel}>
                     <div style={styles.cardHeader}>
                       <span style={styles.cardIconInfo}>AI</span>
-                      <h3 style={styles.cardTitle}>Improved Professional Summary</h3>
+                      <h3 style={styles.cardTitle}>
+                        Improved Professional Summary
+                      </h3>
                     </div>
                     <p style={styles.rewriteCopyBox}>
                       {result.resumeRewrite.professionalSummary}
                     </p>
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Professional Summary",
+                            result.resumeRewrite.professionalSummary
+                          )
+                        }
+                      >
+                        Copy Summary
+                      </button>
+                    </div>
                   </div>
 
                   <div style={styles.rewritePanel}>
@@ -1183,7 +1264,23 @@ function App() {
                       <h3 style={styles.cardTitle}>Optimized Skills Section</h3>
                     </div>
                     <div style={styles.skillChipWrap}>
-                      {renderSkillChips(result.resumeRewrite.optimizedSkills, "matched")}
+                      {renderSkillChips(
+                        result.resumeRewrite.optimizedSkills,
+                        "matched"
+                      )}
+                    </div>
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Optimized Skills",
+                            result.resumeRewrite.optimizedSkills?.join(", ")
+                          )
+                        }
+                      >
+                        Copy Skills
+                      </button>
                     </div>
                   </div>
 
@@ -1195,6 +1292,19 @@ function App() {
                     <p style={styles.rewriteCopyBox}>
                       {result.resumeRewrite.linkedinHeadline}
                     </p>
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "LinkedIn Headline",
+                            result.resumeRewrite.linkedinHeadline
+                          )
+                        }
+                      >
+                        Copy Headline
+                      </button>
+                    </div>
                   </div>
 
                   <div style={styles.rewritePanel}>
@@ -1205,6 +1315,19 @@ function App() {
                     <p style={styles.rewriteCopyBox}>
                       {result.resumeRewrite.coverNote}
                     </p>
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Short Cover Note",
+                            result.resumeRewrite.coverNote
+                          )
+                        }
+                      >
+                        Copy Cover Note
+                      </button>
+                    </div>
                   </div>
 
                   <div style={styles.rewritePanel}>
@@ -1213,6 +1336,19 @@ function App() {
                       <h3 style={styles.cardTitle}>Resume Bullet Points</h3>
                     </div>
                     {renderNumberedList(result.resumeRewrite.resumeBullets)}
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Resume Bullet Points",
+                            result.resumeRewrite.resumeBullets
+                          )
+                        }
+                      >
+                        Copy Resume Bullets
+                      </button>
+                    </div>
                   </div>
 
                   <div style={styles.rewritePanel}>
@@ -1221,6 +1357,19 @@ function App() {
                       <h3 style={styles.cardTitle}>Project Bullet Points</h3>
                     </div>
                     {renderNumberedList(result.resumeRewrite.projectBullets)}
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Project Bullet Points",
+                            result.resumeRewrite.projectBullets
+                          )
+                        }
+                      >
+                        Copy Project Bullets
+                      </button>
+                    </div>
                   </div>
 
                   <div style={styles.rewriteWidePanel}>
@@ -1229,6 +1378,19 @@ function App() {
                       <h3 style={styles.cardTitle}>Resume Improvement Tips</h3>
                     </div>
                     {renderBulletList(result.resumeRewrite.improvementTips)}
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Resume Improvement Tips",
+                            result.resumeRewrite.improvementTips
+                          )
+                        }
+                      >
+                        Copy Tips
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1239,7 +1401,9 @@ function App() {
                 <div style={styles.jdHeader}>
                   <div>
                     <p style={styles.sectionEyebrow}>Custom JD Match</p>
-                    <h3 style={styles.jdTitle}>Resume vs Job Description Report</h3>
+                    <h3 style={styles.jdTitle}>
+                      Resume vs Job Description Report
+                    </h3>
                     <p style={styles.jdText}>
                       HireNexa AI compared your resume with the exact job
                       description you pasted and identified matched keywords,
@@ -1295,7 +1459,9 @@ function App() {
                   <div style={styles.timelineCard}>
                     <div style={styles.cardHeader}>
                       <span style={styles.cardIconInfo}>Fix</span>
-                      <h3 style={styles.cardTitle}>Top Fixes Before Applying</h3>
+                      <h3 style={styles.cardTitle}>
+                        Top Fixes Before Applying
+                      </h3>
                     </div>
                     {renderNumberedList(result.jdFixes)}
                   </div>
@@ -1579,12 +1745,12 @@ function App() {
               <div>
                 <p style={styles.sectionEyebrow}>Premium Report</p>
                 <h3 style={styles.ctaTitle}>
-                  Download your complete HireNexa AI career report
+                  Download your complete privacy-safe HireNexa AI career report
                 </h3>
                 <p style={styles.ctaText}>
                   Includes ATS score, JD Match, AI Resume Rewrite, Resume DNA,
                   Mock Interview Coach, matched skills, missing skills,
-                  recommendations, roadmap, and resume text used for analysis.
+                  recommendations, roadmap, and privacy-masked resume text.
                 </p>
               </div>
 
@@ -1596,7 +1762,7 @@ function App() {
                 }}
                 onClick={downloadPDFReport}
               >
-                {isPremium ? "Download PDF Report" : "Upgrade to Download"}
+                {isPremium ? "Download Privacy-Safe PDF" : "Upgrade to Download"}
               </button>
             </div>
           </section>
@@ -1655,8 +1821,8 @@ function App() {
                   <li>Unlimited resume analyses</li>
                   <li>Custom Job Description Match</li>
                   <li>AI Resume Rewrite Generator</li>
-                  <li>Resume DNA Engine</li>
-                  <li>AI Mock Interview Coach</li>
+                  <li>Copy-ready resume content</li>
+                  <li>Privacy-safe PDF report</li>
                 </ul>
 
                 <button
@@ -2417,6 +2583,22 @@ const styles = {
     border: "1px solid rgba(148,163,184,0.16)",
     borderRadius: "16px",
     padding: "16px",
+  },
+  copyButtonRow: {
+    marginTop: "14px",
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+  copyButton: {
+    border: "1px solid rgba(56,189,248,0.32)",
+    background: "rgba(56,189,248,0.12)",
+    color: "#bae6fd",
+    padding: "10px 14px",
+    borderRadius: "12px",
+    fontSize: "14px",
+    cursor: "pointer",
+    fontWeight: "900",
   },
   jdSection: {
     background:
