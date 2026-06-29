@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
+import DashboardAnalytics from "./components/DashboardAnalytics";
+import AdminDashboard from "./components/AdminDashboard";
+import LandingPagePolish from "./components/LandingPagePolish";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 function App() {
   const [resumeText, setResumeText] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
   const [targetRole, setTargetRole] = useState("fresher");
   const [selectedFile, setSelectedFile] = useState(null);
   const [result, setResult] = useState(null);
@@ -49,6 +53,10 @@ function App() {
   };
 
   const isPremium = user?.plan === "premium";
+
+  const isAdminUser =
+    user?.isAdmin === true ||
+    String(user?.email || "").toLowerCase().trim() === "bragadishv@gmail.com";
 
   useEffect(() => {
     if (token) {
@@ -130,6 +138,7 @@ function App() {
     setResult(null);
     setHistory([]);
     setResumeText("");
+    setJobDescription("");
     setSelectedFile(null);
 
     alert("Logged out successfully.");
@@ -367,6 +376,7 @@ function App() {
         body: JSON.stringify({
           resumeText,
           targetRole,
+          jobDescription,
         }),
       });
 
@@ -412,12 +422,6 @@ function App() {
     return "rgba(239,68,68,0.35)";
   };
 
-  const getScoreMessage = (score) => {
-    if (score >= 75) return "Recruiter-ready resume match";
-    if (score >= 50) return "Good profile, needs stronger keywords";
-    return "Needs stronger role-specific optimization";
-  };
-
   const getReadinessLabel = (score) => {
     if (score >= 75) return "High Recruiter Readiness";
     if (score >= 50) return "Medium Recruiter Readiness";
@@ -444,6 +448,64 @@ function App() {
   const scrollToAnalyzer = () => {
     const element = document.getElementById("resume-analyzer");
     if (element) element.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToPrimaryAction = () => {
+    const element = document.getElementById(user ? "resume-analyzer" : "auth-section");
+    if (element) element.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const maskSensitiveText = (text) => {
+    if (!text) {
+      return "";
+    }
+
+    return String(text)
+      .replace(
+        /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,
+        "[EMAIL HIDDEN]"
+      )
+      .replace(/(\+?\d[\d\s().-]{7,}\d)/g, (match) => {
+        const digitsOnly = match.replace(/\D/g, "");
+
+        if (digitsOnly.length >= 10) {
+          return "[PHONE HIDDEN]";
+        }
+
+        return match;
+      });
+  };
+
+  const copyToClipboard = async (label, content) => {
+    const text = Array.isArray(content)
+      ? content.join("\n")
+      : String(content || "");
+
+    if (!text.trim()) {
+      alert(`${label} is not available to copy.`);
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      }
+
+      alert(`${label} copied successfully.`);
+    } catch (error) {
+      alert(`Could not copy ${label}. Please select and copy manually.`);
+    }
   };
 
   const downloadPDFReport = () => {
@@ -516,6 +578,64 @@ function App() {
     addSmallText(`ATS Score: ${result.atsScore}%`);
     addSmallText(`Generated Date: ${new Date().toLocaleDateString()}`);
 
+    addSectionTitle("AI Resume Rewrite Generator");
+    if (result.resumeRewrite) {
+      addSmallText(
+        `Professional Summary: ${result.resumeRewrite.professionalSummary}`
+      );
+      addSmallText(
+        `Optimized Skills: ${
+          result.resumeRewrite.optimizedSkills?.length
+            ? result.resumeRewrite.optimizedSkills.join(", ")
+            : "No optimized skills available."
+        }`
+      );
+
+      addSectionTitle("Resume Bullet Points");
+      addList(result.resumeRewrite.resumeBullets);
+
+      addSectionTitle("Project Bullet Points");
+      addList(result.resumeRewrite.projectBullets);
+
+      addSectionTitle("LinkedIn Headline");
+      addSmallText(result.resumeRewrite.linkedinHeadline);
+
+      addSectionTitle("Short Cover Note");
+      addSmallText(result.resumeRewrite.coverNote);
+
+      addSectionTitle("Resume Improvement Tips");
+      addList(result.resumeRewrite.improvementTips);
+    } else {
+      addSmallText("Resume rewrite data not available.");
+    }
+
+    addSectionTitle("Custom Job Description Match");
+    if (result.jobDescription) {
+      addSmallText(`Job Match Score: ${result.jobMatchScore}%`);
+      addSmallText(`Role Fit Summary: ${result.roleFitSummary}`);
+      addSmallText(`JD Gap Summary: ${result.jdGapSummary}`);
+      addSmallText(
+        `JD Matched Keywords: ${
+          result.jdMatchedKeywords?.length
+            ? result.jdMatchedKeywords.join(", ")
+            : "None"
+        }`
+      );
+      addSmallText(
+        `JD Missing Keywords: ${
+          result.jdMissingKeywords?.length
+            ? result.jdMissingKeywords.join(", ")
+            : "None"
+        }`
+      );
+      addSectionTitle("Top Fixes Before Applying");
+      addList(result.jdFixes);
+    } else {
+      addSmallText(
+        "No job description was added. Paste a job description to get a direct resume vs job match score."
+      );
+    }
+
     addSectionTitle("Resume DNA Engine");
     if (result.resumeDna) {
       addSmallText(`Profile Strength: ${result.resumeDna.profileStrength}%`);
@@ -580,8 +700,11 @@ function App() {
     addSectionTitle("Skill Gap Action Plan");
     addList(result.skillGapPlan);
 
-    addSectionTitle("Resume Text Used For Analysis");
-    addSmallText(resumeText);
+    addSectionTitle("Resume Text Used For Analysis Privacy Safe");
+    addSmallText(
+      "Privacy note: phone numbers and email addresses found inside the resume text are hidden in this PDF report."
+    );
+    addSmallText(maskSensitiveText(resumeText));
 
     doc.save("HireNexa-AI-Resume-Report.pdf");
   };
@@ -739,8 +862,8 @@ function App() {
 
             <p style={styles.heroSubtitle}>
               Optimize your resume for ATS systems, identify missing skills,
-              generate interview questions, and build a personalized career
-              roadmap that makes recruiters notice you.
+              compare your resume with real job descriptions, generate rewritten
+              resume content, and prepare for interviews.
             </p>
 
             <div style={styles.heroActions}>
@@ -748,7 +871,7 @@ function App() {
                 Analyze Resume Free
               </button>
               <button style={styles.heroSecondaryButton} onClick={scrollToAnalyzer}>
-                View AI Report
+                Generate Resume Rewrite
               </button>
             </div>
 
@@ -771,15 +894,15 @@ function App() {
           <div style={styles.heroPanel}>
             <div style={styles.panelTop}>
               <span style={styles.liveDot}></span>
-              Resume Intelligence Scan
+              Resume Rewrite Intelligence
             </div>
 
             <div style={styles.scorePreview}>
               <div>
-                <p style={styles.previewLabel}>Recruiter Readiness</p>
+                <p style={styles.previewLabel}>Rewrite Readiness</p>
                 <h2 style={styles.previewScore}>86%</h2>
               </div>
-              <div style={styles.ring}>ATS</div>
+              <div style={styles.ring}>AI</div>
             </div>
 
             <div style={styles.previewBars}>
@@ -791,38 +914,44 @@ function App() {
               </div>
 
               <div>
-                <span>Skill Match</span>
+                <span>JD Match</span>
                 <div style={styles.barTrack}>
-                  <div style={{ ...styles.barFill, width: "74%" }}></div>
+                  <div style={{ ...styles.barFill, width: "76%" }}></div>
                 </div>
               </div>
 
               <div>
-                <span>Interview Readiness</span>
+                <span>Resume Rewrite</span>
                 <div style={styles.barTrack}>
-                  <div style={{ ...styles.barFill, width: "81%" }}></div>
+                  <div style={{ ...styles.barFill, width: "84%" }}></div>
                 </div>
               </div>
             </div>
 
             <div style={styles.aiInsight}>
-              AI Insight: Add stronger role-specific keywords and measurable
-              achievements to increase recruiter shortlisting chances.
+              AI Insight: Generate a better professional summary, optimized
+              skills, resume bullets, LinkedIn headline, and cover note.
             </div>
           </div>
         </div>
 
         <div style={styles.featureGrid}>
           <div style={styles.featureCard}>ATS Optimization</div>
-          <div style={styles.featureCard}>Resume DNA</div>
+          <div style={styles.featureCard}>JD Match</div>
+          <div style={styles.featureCard}>Resume Rewrite</div>
           <div style={styles.featureCard}>Mock Interviews</div>
-          <div style={styles.featureCard}>Recruiter Ready</div>
         </div>
       </section>
 
+      <LandingPagePolish
+        onStart={scrollToPrimaryAction}
+        isPremium={isPremium}
+        user={user}
+      />
+
       <main style={styles.main}>
         {!user && (
-          <section style={styles.authCard}>
+          <section id="auth-section" style={styles.authCard}>
             <div style={styles.sectionHeader}>
               <p style={styles.sectionEyebrow}>Secure Access</p>
               <h2 style={styles.sectionTitle}>
@@ -927,19 +1056,33 @@ function App() {
 
               {isPremium && (
                 <div style={styles.premiumNotice}>
-                  Premium active: unlimited resume analysis, PDF download, and
-                  extended history access.
+                  Premium active: unlimited resume analysis, JD matching, Resume
+                  DNA, Resume Rewrite, Mock Interview Coach, and privacy-safe PDF
+                  download.
                 </div>
               )}
             </section>
 
+            {isAdminUser && (
+              <AdminDashboard token={token} apiBaseUrl={API_BASE_URL} />
+            )}
+
+            <DashboardAnalytics
+              history={history}
+              user={user}
+              roleLabels={roleLabels}
+            />
+
             <section id="resume-analyzer" style={styles.formCard}>
               <div style={styles.sectionHeader}>
                 <p style={styles.sectionEyebrow}>AI Resume Engine</p>
-                <h2 style={styles.sectionTitle}>Resume Analyzer</h2>
+                <h2 style={styles.sectionTitle}>
+                  Resume + Job Description Analyzer
+                </h2>
                 <p style={styles.sectionSubtitle}>
-                  Select a target role, upload your resume PDF, and generate an
-                  AI-powered recruiter readiness report.
+                  Upload your resume and optionally paste a real job description
+                  to generate ATS, JD Match, Resume DNA, Mock Interview, and AI
+                  Resume Rewrite reports.
                 </p>
               </div>
 
@@ -955,6 +1098,14 @@ function App() {
                 <option value="customer-support">Customer Support</option>
                 <option value="data-analyst">Data Analyst</option>
               </select>
+
+              <label style={styles.label}>Paste Job Description Optional</label>
+              <textarea
+                style={styles.jdTextarea}
+                placeholder="Paste a job description from LinkedIn, Naukri, Indeed, or company careers page. HireNexa AI will compare your resume and generate rewrite suggestions."
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+              />
 
               <label style={styles.label}>Upload Resume PDF</label>
               <input
@@ -983,7 +1134,9 @@ function App() {
               />
 
               <button style={styles.primaryButton} onClick={analyzeResume}>
-                {loading ? "Analyzing Resume..." : "Analyze Resume"}
+                {loading
+                  ? "Analyzing Resume..."
+                  : "Analyze Resume + Generate Rewrite"}
               </button>
 
               <button
@@ -1000,7 +1153,7 @@ function App() {
                 }}
                 onClick={downloadPDFReport}
               >
-                Download Premium PDF Report {isPremium ? "" : "(Premium)"}
+                Download Privacy-Safe PDF Report {isPremium ? "" : "(Premium)"}
               </button>
             </section>
           </>
@@ -1013,9 +1166,9 @@ function App() {
                 <p style={styles.sectionEyebrow}>AI Recruiter Report</p>
                 <h2 style={styles.reportTitle}>Recruiter Readiness Report</h2>
                 <p style={styles.reportSubtitle}>
-                  HireNexa AI analyzed your resume against the selected role and
-                  created a focused action plan to improve ATS matching,
-                  recruiter appeal, and interview readiness.
+                  HireNexa AI analyzed your resume and created a focused action
+                  plan to improve ATS matching, JD alignment, recruiter appeal,
+                  and interview readiness.
                 </p>
 
                 <div
@@ -1069,24 +1222,288 @@ function App() {
               </div>
 
               <div style={styles.metricCard}>
-                <p style={styles.metricLabel}>Matched Skills</p>
+                <p style={styles.metricLabel}>ATS Score</p>
+                <h3 style={styles.metricValue}>{result.atsScore}%</h3>
+              </div>
+
+              <div style={styles.metricCard}>
+                <p style={styles.metricLabel}>JD Match</p>
                 <h3 style={styles.metricValue}>
-                  {(result.matchedSkills || []).length}
+                  {result.jobDescription ? `${result.jobMatchScore}%` : "Not Added"}
                 </h3>
               </div>
 
               <div style={styles.metricCard}>
-                <p style={styles.metricLabel}>Missing Skills</p>
+                <p style={styles.metricLabel}>Rewrite Status</p>
                 <h3 style={styles.metricValue}>
-                  {(result.missingSkills || []).length}
+                  {result.resumeRewrite ? "Generated" : "Not Generated"}
                 </h3>
-              </div>
-
-              <div style={styles.metricCard}>
-                <p style={styles.metricLabel}>Report Status</p>
-                <h3 style={styles.metricValue}>Generated</h3>
               </div>
             </div>
+
+            {result.resumeRewrite && (
+              <div style={styles.rewriteSection}>
+                <div style={styles.rewriteHeader}>
+                  <div>
+                    <p style={styles.sectionEyebrow}>
+                      AI Resume Rewrite Generator
+                    </p>
+                    <h3 style={styles.rewriteTitle}>Optimized Resume Content</h3>
+                    <p style={styles.rewriteText}>
+                      HireNexa AI generated improved resume content based on your
+                      target role, ATS gaps, JD keywords, and recruiter readiness
+                      signals. Use the copy buttons to quickly update your resume
+                      or LinkedIn profile.
+                    </p>
+                  </div>
+
+                  <div style={styles.rewriteBadge}>Rewrite Ready</div>
+                </div>
+
+                <div style={styles.rewriteGrid}>
+                  <div style={styles.rewriteWidePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>AI</span>
+                      <h3 style={styles.cardTitle}>
+                        Improved Professional Summary
+                      </h3>
+                    </div>
+                    <p style={styles.rewriteCopyBox}>
+                      {result.resumeRewrite.professionalSummary}
+                    </p>
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Professional Summary",
+                            result.resumeRewrite.professionalSummary
+                          )
+                        }
+                      >
+                        Copy Summary
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconSuccess}>Skill</span>
+                      <h3 style={styles.cardTitle}>Optimized Skills Section</h3>
+                    </div>
+                    <div style={styles.skillChipWrap}>
+                      {renderSkillChips(
+                        result.resumeRewrite.optimizedSkills,
+                        "matched"
+                      )}
+                    </div>
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Optimized Skills",
+                            result.resumeRewrite.optimizedSkills?.join(", ")
+                          )
+                        }
+                      >
+                        Copy Skills
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>LI</span>
+                      <h3 style={styles.cardTitle}>LinkedIn Headline</h3>
+                    </div>
+                    <p style={styles.rewriteCopyBox}>
+                      {result.resumeRewrite.linkedinHeadline}
+                    </p>
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "LinkedIn Headline",
+                            result.resumeRewrite.linkedinHeadline
+                          )
+                        }
+                      >
+                        Copy Headline
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>CV</span>
+                      <h3 style={styles.cardTitle}>Short Cover Note</h3>
+                    </div>
+                    <p style={styles.rewriteCopyBox}>
+                      {result.resumeRewrite.coverNote}
+                    </p>
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Short Cover Note",
+                            result.resumeRewrite.coverNote
+                          )
+                        }
+                      >
+                        Copy Cover Note
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconSuccess}>✓</span>
+                      <h3 style={styles.cardTitle}>Resume Bullet Points</h3>
+                    </div>
+                    {renderNumberedList(result.resumeRewrite.resumeBullets)}
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Resume Bullet Points",
+                            result.resumeRewrite.resumeBullets
+                          )
+                        }
+                      >
+                        Copy Resume Bullets
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.rewritePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconSuccess}>P</span>
+                      <h3 style={styles.cardTitle}>Project Bullet Points</h3>
+                    </div>
+                    {renderNumberedList(result.resumeRewrite.projectBullets)}
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Project Bullet Points",
+                            result.resumeRewrite.projectBullets
+                          )
+                        }
+                      >
+                        Copy Project Bullets
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.rewriteWidePanel}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>Tip</span>
+                      <h3 style={styles.cardTitle}>Resume Improvement Tips</h3>
+                    </div>
+                    {renderBulletList(result.resumeRewrite.improvementTips)}
+                    <div style={styles.copyButtonRow}>
+                      <button
+                        style={styles.copyButton}
+                        onClick={() =>
+                          copyToClipboard(
+                            "Resume Improvement Tips",
+                            result.resumeRewrite.improvementTips
+                          )
+                        }
+                      >
+                        Copy Tips
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {result.jobDescription && (
+              <div style={styles.jdSection}>
+                <div style={styles.jdHeader}>
+                  <div>
+                    <p style={styles.sectionEyebrow}>Custom JD Match</p>
+                    <h3 style={styles.jdTitle}>
+                      Resume vs Job Description Report
+                    </h3>
+                    <p style={styles.jdText}>
+                      HireNexa AI compared your resume with the exact job
+                      description you pasted and identified matched keywords,
+                      missing keywords, role fit, and fixes before applying.
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      ...styles.jdScoreBadge,
+                      background: getScoreBackground(result.jobMatchScore),
+                      borderColor: getScoreBorder(result.jobMatchScore),
+                      color: getScoreColor(result.jobMatchScore),
+                    }}
+                  >
+                    {result.jobMatchScore}% JD Match
+                  </div>
+                </div>
+
+                <div style={styles.jdSummaryGrid}>
+                  <div style={styles.jdSummaryCard}>
+                    <h4 style={styles.jdCardTitle}>Role Fit Summary</h4>
+                    <p style={styles.cardText}>{result.roleFitSummary}</p>
+                  </div>
+
+                  <div style={styles.jdSummaryCard}>
+                    <h4 style={styles.jdCardTitle}>Resume Gap Summary</h4>
+                    <p style={styles.cardText}>{result.jdGapSummary}</p>
+                  </div>
+                </div>
+
+                <div style={styles.reportGrid}>
+                  <div style={styles.resultCard}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconSuccess}>JD</span>
+                      <h3 style={styles.cardTitle}>JD Matched Keywords</h3>
+                    </div>
+                    <div style={styles.skillChipWrap}>
+                      {renderSkillChips(result.jdMatchedKeywords, "matched")}
+                    </div>
+                  </div>
+
+                  <div style={styles.resultCard}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconDanger}>JD</span>
+                      <h3 style={styles.cardTitle}>JD Missing Keywords</h3>
+                    </div>
+                    <div style={styles.skillChipWrap}>
+                      {renderSkillChips(result.jdMissingKeywords, "missing")}
+                    </div>
+                  </div>
+
+                  <div style={styles.timelineCard}>
+                    <div style={styles.cardHeader}>
+                      <span style={styles.cardIconInfo}>Fix</span>
+                      <h3 style={styles.cardTitle}>
+                        Top Fixes Before Applying
+                      </h3>
+                    </div>
+                    {renderNumberedList(result.jdFixes)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!result.jobDescription && (
+              <div style={styles.noJdNotice}>
+                <strong>Job Description Analysis Not Added:</strong> Paste a job
+                description before analysis to unlock JD Match Score, matched JD
+                keywords, missing JD keywords, and fixes before applying.
+              </div>
+            )}
 
             <div style={styles.resumeDnaCard}>
               <div>
@@ -1112,26 +1529,20 @@ function App() {
                 </div>
 
                 <div style={styles.dnaItem}>
-                  <span style={styles.dnaLabel}>Skills</span>
+                  <span style={styles.dnaLabel}>JD Match</span>
                   <div style={styles.dnaTrack}>
                     <div
                       style={{
                         ...styles.dnaFill,
-                        width: `${
-                          result.resumeDna?.skillsMatch ||
-                          ((result.matchedSkills || []).length > 0
-                            ? Math.min(
-                                100,
-                                ((result.matchedSkills || []).length /
-                                  Math.max(
-                                    1,
-                                    (result.matchedSkills || []).length +
-                                      (result.missingSkills || []).length
-                                  )) *
-                                  100
-                              )
-                            : 15)
-                        }%`,
+                        width: `${Math.min(
+                          100,
+                          result.jobDescription
+                            ? result.jobMatchScore || 0
+                            : result.resumeDna?.skillsMatch || 0
+                        )}%`,
+                        background: result.jobDescription
+                          ? getScoreColor(result.jobMatchScore)
+                          : undefined,
                       }}
                     ></div>
                   </div>
@@ -1362,12 +1773,12 @@ function App() {
               <div>
                 <p style={styles.sectionEyebrow}>Premium Report</p>
                 <h3 style={styles.ctaTitle}>
-                  Download your complete HireNexa AI career report
+                  Download your complete privacy-safe HireNexa AI career report
                 </h3>
                 <p style={styles.ctaText}>
-                  Includes ATS score, Resume DNA Engine, Mock Interview Coach,
-                  matched skills, missing skills, recommendations, roadmap, and
-                  resume text used for analysis.
+                  Includes ATS score, JD Match, AI Resume Rewrite, Resume DNA,
+                  Mock Interview Coach, matched skills, missing skills,
+                  recommendations, roadmap, and privacy-masked resume text.
                 </p>
               </div>
 
@@ -1379,7 +1790,7 @@ function App() {
                 }}
                 onClick={downloadPDFReport}
               >
-                {isPremium ? "Download PDF Report" : "Upgrade to Download"}
+                {isPremium ? "Download Privacy-Safe PDF" : "Upgrade to Download"}
               </button>
             </div>
           </section>
@@ -1436,10 +1847,10 @@ function App() {
                 <p style={styles.price}>₹199</p>
                 <ul style={styles.pricingList}>
                   <li>Unlimited resume analyses</li>
-                  <li>Resume DNA Engine</li>
-                  <li>AI Mock Interview Coach</li>
-                  <li>Premium PDF report download</li>
-                  <li>Extended analysis history</li>
+                  <li>Custom Job Description Match</li>
+                  <li>AI Resume Rewrite Generator</li>
+                  <li>Copy-ready resume content</li>
+                  <li>Privacy-safe PDF report</li>
                 </ul>
 
                 <button
@@ -1505,6 +1916,11 @@ function App() {
                     </div>
 
                     <p style={styles.historyMeta}>
+                      <strong>JD Match:</strong>{" "}
+                      {item.jobMatchScore ? `${item.jobMatchScore}%` : "Not added"}
+                    </p>
+
+                    <p style={styles.historyMeta}>
                       <strong>Matched:</strong>{" "}
                       {item.matchedSkills && item.matchedSkills.length > 0
                         ? item.matchedSkills.join(", ")
@@ -1526,8 +1942,9 @@ function App() {
       </main>
 
       <footer style={styles.footer}>
-        HireNexa AI — AI-powered resume analysis, career planning, mock interview
-        coaching, and recruiter readiness intelligence.
+        HireNexa AI — AI-powered resume analysis, job description matching,
+        AI resume rewrite, career planning, mock interview coaching, and
+        recruiter readiness intelligence.
       </footer>
     </div>
   );
@@ -1961,6 +2378,20 @@ const styles = {
     color: "#cbd5e1",
     marginBottom: "14px",
   },
+  jdTextarea: {
+    width: "100%",
+    minHeight: "150px",
+    padding: "15px",
+    fontSize: "15px",
+    borderRadius: "14px",
+    border: "1px solid rgba(56,189,248,0.28)",
+    resize: "vertical",
+    marginBottom: "20px",
+    background: "rgba(6,182,212,0.08)",
+    color: "#ffffff",
+    outline: "none",
+    lineHeight: "1.6",
+  },
   textarea: {
     width: "100%",
     minHeight: "230px",
@@ -2116,6 +2547,147 @@ const styles = {
     margin: 0,
     fontSize: "23px",
     letterSpacing: "-0.03em",
+  },
+  rewriteSection: {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(79,70,229,0.18), rgba(6,182,212,0.1))",
+    border: "1px solid rgba(129,140,248,0.3)",
+    borderRadius: "28px",
+    padding: "30px",
+    boxShadow: "0 25px 75px rgba(0,0,0,0.28)",
+  },
+  rewriteHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "18px",
+    marginBottom: "24px",
+    flexWrap: "wrap",
+  },
+  rewriteTitle: {
+    margin: "0 0 10px",
+    fontSize: "28px",
+    color: "#ffffff",
+    letterSpacing: "-0.04em",
+  },
+  rewriteText: {
+    margin: 0,
+    color: "#cbd5e1",
+    lineHeight: "1.7",
+    maxWidth: "760px",
+  },
+  rewriteBadge: {
+    padding: "12px 16px",
+    borderRadius: "999px",
+    background: "linear-gradient(135deg, #818cf8, #38bdf8)",
+    color: "#ffffff",
+    fontWeight: "900",
+    whiteSpace: "nowrap",
+    boxShadow: "0 16px 35px rgba(129,140,248,0.25)",
+  },
+  rewriteGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "18px",
+  },
+  rewritePanel: {
+    background: "rgba(2,6,23,0.48)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "22px",
+    padding: "24px",
+  },
+  rewriteWidePanel: {
+    gridColumn: "1 / -1",
+    background: "rgba(2,6,23,0.48)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "22px",
+    padding: "24px",
+  },
+  rewriteCopyBox: {
+    margin: 0,
+    color: "#dbeafe",
+    lineHeight: "1.8",
+    background: "rgba(15,23,42,0.58)",
+    border: "1px solid rgba(148,163,184,0.16)",
+    borderRadius: "16px",
+    padding: "16px",
+  },
+  copyButtonRow: {
+    marginTop: "14px",
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+  copyButton: {
+    border: "1px solid rgba(56,189,248,0.32)",
+    background: "rgba(56,189,248,0.12)",
+    color: "#bae6fd",
+    padding: "10px 14px",
+    borderRadius: "12px",
+    fontSize: "14px",
+    cursor: "pointer",
+    fontWeight: "900",
+  },
+  jdSection: {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(6,182,212,0.14))",
+    border: "1px solid rgba(56,189,248,0.26)",
+    borderRadius: "28px",
+    padding: "30px",
+    boxShadow: "0 25px 75px rgba(0,0,0,0.28)",
+    display: "grid",
+    gap: "22px",
+  },
+  jdHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "18px",
+    flexWrap: "wrap",
+  },
+  jdTitle: {
+    margin: "0 0 10px",
+    fontSize: "28px",
+    color: "#ffffff",
+    letterSpacing: "-0.04em",
+  },
+  jdText: {
+    margin: 0,
+    color: "#cbd5e1",
+    lineHeight: "1.7",
+    maxWidth: "760px",
+  },
+  jdScoreBadge: {
+    padding: "14px 18px",
+    borderRadius: "999px",
+    border: "1px solid",
+    fontWeight: "900",
+    whiteSpace: "nowrap",
+    fontSize: "16px",
+  },
+  jdSummaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "18px",
+  },
+  jdSummaryCard: {
+    background: "rgba(2,6,23,0.48)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "22px",
+    padding: "24px",
+  },
+  jdCardTitle: {
+    color: "#ffffff",
+    fontSize: "18px",
+    margin: "0 0 10px",
+  },
+  noJdNotice: {
+    padding: "18px",
+    borderRadius: "18px",
+    background: "rgba(245,158,11,0.12)",
+    border: "1px solid rgba(245,158,11,0.25)",
+    color: "#fde68a",
+    lineHeight: "1.7",
   },
   resumeDnaCard: {
     background:
